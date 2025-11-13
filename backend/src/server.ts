@@ -25,6 +25,7 @@ import produtoRoutes from './routes/produtos';
 import acompanhanteRoutes from './routes/acompanhantes';
 import caixaRoutes from './routes/caixa';
 import quartoRoutes from './routes/quartos';
+import usuarioRoutes from './routes/usuarios';
 
 // Initialize Express
 const app = express();
@@ -69,6 +70,7 @@ app.use('/api/produtos', produtoRoutes);
 app.use('/api/acompanhantes', acompanhanteRoutes);
 app.use('/api/caixa', caixaRoutes);
 app.use('/api/quartos', quartoRoutes);
+app.use('/api/usuarios', usuarioRoutes);
 
 // Error handler (deve ser o último middleware)
 app.use(errorHandler);

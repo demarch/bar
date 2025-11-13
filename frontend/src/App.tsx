@@ -9,6 +9,7 @@ import { Login } from './pages/Login';
 import { PDV } from './pages/PDV';
 import { Caixa } from './pages/Caixa';
 import { Quartos } from './pages/Quartos';
+import { Admin } from './pages/Admin';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -88,6 +89,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <Quartos />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute>
+                <Admin />
               </ProtectedRoute>
             }
           />
