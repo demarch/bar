@@ -8,6 +8,7 @@ import socketService from './services/socket';
 import { Login } from './pages/Login';
 import { PDV } from './pages/PDV';
 import { Caixa } from './pages/Caixa';
+import { Quartos } from './pages/Quartos';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -79,6 +80,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <Caixa />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/quartos"
+            element={
+              <ProtectedRoute>
+                <Quartos />
               </ProtectedRoute>
             }
           />
