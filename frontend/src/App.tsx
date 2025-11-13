@@ -10,6 +10,7 @@ import { PDV } from './pages/PDV';
 import { Caixa } from './pages/Caixa';
 import { Quartos } from './pages/Quartos';
 import { Admin } from './pages/Admin';
+import { Relatorios } from './pages/Relatorios';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -97,6 +98,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <Admin />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/relatorios"
+            element={
+              <ProtectedRoute>
+                <Relatorios />
               </ProtectedRoute>
             }
           />

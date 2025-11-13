@@ -26,6 +26,7 @@ import acompanhanteRoutes from './routes/acompanhantes';
 import caixaRoutes from './routes/caixa';
 import quartoRoutes from './routes/quartos';
 import usuarioRoutes from './routes/usuarios';
+import relatorioRoutes from './routes/relatorios';
 
 // Initialize Express
 const app = express();
@@ -71,6 +72,7 @@ app.use('/api/acompanhantes', acompanhanteRoutes);
 app.use('/api/caixa', caixaRoutes);
 app.use('/api/quartos', quartoRoutes);
 app.use('/api/usuarios', usuarioRoutes);
+app.use('/api/relatorios', relatorioRoutes);
 
 // Error handler (deve ser o último middleware)
 app.use(errorHandler);
