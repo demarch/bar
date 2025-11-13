@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: bar-postgres
+    environment:
+      POSTGRES_DB: bar_system
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: senha_segura_2024
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - bar-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d bar_system"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: bar-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - bar-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: bar-backend
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgresql://admin:senha_segura_2024@postgres:5432/bar_system
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: sua_chave_secreta_muito_segura_2024
+      JWT_REFRESH_SECRET: sua_chave_refresh_muito_segura_2024
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    networks:
+      - bar-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: bar-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    environment:
+      VITE_API_URL: http://localhost:3001
+      VITE_WS_URL: ws://localhost:3001
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - bar-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  bar-network:
+    driver: bridge
