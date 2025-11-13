@@ -36,7 +36,7 @@ export const abrirCaixa = asyncHandler(async (req: AuthRequest, res: Response) =
 });
 
 // Buscar caixa aberto
-export const buscarCaixaAberto = asyncHandler(async (req: AuthRequest, res: Response) => {
+export const buscarCaixaAberto = asyncHandler(async (_req: AuthRequest, res: Response) => {
   const result = await pool.query(
     `SELECT
       mc.*,

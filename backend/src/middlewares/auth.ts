@@ -1,5 +1,5 @@
 import { Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
 import { AuthRequest, UserType } from '../types';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret-key-change-me';
@@ -11,48 +11,52 @@ export interface JwtPayload {
 }
 
 // Middleware para verificar se o usuário está autenticado
-export const authenticate = (req: AuthRequest, res: Response, next: NextFunction) => {
+export const authenticate = (req: AuthRequest, res: Response, next: NextFunction): void => {
   try {
     const authHeader = req.headers.authorization;
 
     if (!authHeader) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: 'Token não fornecido'
       });
+      return;
     }
 
     const parts = authHeader.split(' ');
 
     if (parts.length !== 2) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: 'Erro no token'
       });
+      return;
     }
 
     const [scheme, token] = parts;
 
     if (!/^Bearer$/i.test(scheme)) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: 'Token mal formatado'
       });
+      return;
     }
 
     jwt.verify(token, JWT_SECRET, (err, decoded) => {
       if (err) {
-        return res.status(401).json({
+        res.status(401).json({
           success: false,
           error: 'Token inválido'
         });
+        return;
       }
 
       req.user = decoded as JwtPayload;
-      return next();
+      next();
     });
   } catch (error) {
-    return res.status(401).json({
+    res.status(401).json({
       success: false,
       error: 'Falha na autenticação'
     });
@@ -61,19 +65,21 @@ export const authenticate = (req: AuthRequest, res: Response, next: NextFunction
 
 // Middleware para verificar se o usuário tem permissão (tipo de usuário)
 export const authorize = (...allowedTypes: UserType[]) => {
-  return (req: AuthRequest, res: Response, next: NextFunction) => {
+  return (req: AuthRequest, res: Response, next: NextFunction): void => {
     if (!req.user) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: 'Usuário não autenticado'
       });
+      return;
     }
 
     if (!allowedTypes.includes(req.user.tipo)) {
-      return res.status(403).json({
+      res.status(403).json({
         success: false,
         error: 'Acesso negado. Você não tem permissão para acessar este recurso.'
       });
+      return;
     }
 
     next();
@@ -82,15 +88,19 @@ export const authorize = (...allowedTypes: UserType[]) => {
 
 // Gerar token JWT
 export const generateToken = (payload: JwtPayload): string => {
-  const expiresIn = process.env.JWT_EXPIRES_IN || '1h';
-  return jwt.sign(payload, JWT_SECRET, { expiresIn });
+  const options: SignOptions = {
+    expiresIn: (process.env.JWT_EXPIRES_IN || '1h') as any
+  };
+  return jwt.sign(payload, JWT_SECRET, options);
 };
 
 // Gerar refresh token
 export const generateRefreshToken = (payload: JwtPayload): string => {
   const refreshSecret = process.env.JWT_REFRESH_SECRET || 'refresh-secret-change-me';
-  const expiresIn = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
-  return jwt.sign(payload, refreshSecret, { expiresIn });
+  const options: SignOptions = {
+    expiresIn: (process.env.JWT_REFRESH_EXPIRES_IN || '7d') as any
+  };
+  return jwt.sign(payload, refreshSecret, options);
 };
 
 // Verificar refresh token
