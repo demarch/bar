@@ -5,7 +5,7 @@ import { AuthRequest, ApiResponse } from '../types';
 import { asyncHandler, AppError } from '../middlewares/errorHandler';
 
 // Listar todos os usuários
-export const listarUsuarios = asyncHandler(async (req: AuthRequest, res: Response) => {
+export const listarUsuarios = asyncHandler(async (_req: AuthRequest, res: Response) => {
   const result = await pool.query(
     `SELECT id, nome, login, tipo, ativo, created_at
      FROM usuarios

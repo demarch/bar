@@ -4,7 +4,7 @@ import { AuthRequest, ApiResponse } from '../types';
 import { asyncHandler, AppError } from '../middlewares/errorHandler';
 
 // Listar configurações de quartos
-export const listarConfiguracoesQuartos = asyncHandler(async (req: AuthRequest, res: Response) => {
+export const listarConfiguracoesQuartos = asyncHandler(async (_req: AuthRequest, res: Response) => {
   const result = await pool.query(
     'SELECT * FROM configuracao_quartos WHERE ativo = true ORDER BY ordem, minutos'
   );
@@ -18,7 +18,7 @@ export const listarConfiguracoesQuartos = asyncHandler(async (req: AuthRequest, 
 });
 
 // Listar quartos ocupados
-export const listarQuartosOcupados = asyncHandler(async (req: AuthRequest, res: Response) => {
+export const listarQuartosOcupados = asyncHandler(async (_req: AuthRequest, res: Response) => {
   const result = await pool.query(`
     SELECT
       oq.*,
@@ -164,7 +164,7 @@ export const finalizarOcupacao = asyncHandler(async (req: AuthRequest, res: Resp
       `INSERT INTO itens_comanda
        (comanda_id, produto_id, acompanhante_id, quantidade, valor_unitario, valor_total, tipo_item, usuario_id)
        VALUES ($1, NULL, $2, 1, $3, $3, 'quarto', $4)`,
-      [ocupacao.comanda_id, ocupacao.acompanhante_id, valor_cobrado, req.user.id]
+      [ocupacao.comanda_id, ocupacao.acompanhante_id, valor_cobrado, req.user!.id]
     );
   }
 

@@ -4,7 +4,7 @@ import { AuthRequest, ApiResponse } from '../types';
 import { asyncHandler, AppError } from '../middlewares/errorHandler';
 
 // Listar todas as categorias
-export const listarCategorias = asyncHandler(async (req: AuthRequest, res: Response) => {
+export const listarCategorias = asyncHandler(async (_req: AuthRequest, res: Response) => {
   const result = await pool.query(
     'SELECT * FROM categorias WHERE ativa = true ORDER BY ordem, nome'
   );

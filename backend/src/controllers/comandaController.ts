@@ -1,10 +1,10 @@
 import { Response } from 'express';
 import { pool } from '../config/database';
-import { AuthRequest, ApiResponse, Comanda, ItemComanda } from '../types';
+import { AuthRequest, ApiResponse } from '../types';
 import { asyncHandler, AppError } from '../middlewares/errorHandler';
 
 // Listar comandas abertas
-export const listarComandasAbertas = asyncHandler(async (req: AuthRequest, res: Response) => {
+export const listarComandasAbertas = asyncHandler(async (_req: AuthRequest, res: Response) => {
   const result = await pool.query(`
     SELECT
       c.*,

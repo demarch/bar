@@ -4,7 +4,7 @@ import { AuthRequest, ApiResponse } from '../types';
 import { asyncHandler, AppError } from '../middlewares/errorHandler';
 
 // Listar todas acompanhantes
-export const listarAcompanhantes = asyncHandler(async (req: AuthRequest, res: Response) => {
+export const listarAcompanhantes = asyncHandler(async (_req: AuthRequest, res: Response) => {
   const result = await pool.query(
     `SELECT * FROM acompanhantes ORDER BY nome`
   );
@@ -18,7 +18,7 @@ export const listarAcompanhantes = asyncHandler(async (req: AuthRequest, res: Re
 });
 
 // Listar acompanhantes ativas hoje
-export const listarAcompanhantesAtivas = asyncHandler(async (req: AuthRequest, res: Response) => {
+export const listarAcompanhantesAtivas = asyncHandler(async (_req: AuthRequest, res: Response) => {
   const result = await pool.query(
     `SELECT a.*, aad.data, aad.hora_ativacao
      FROM acompanhantes a
@@ -124,7 +124,7 @@ export const ativarAcompanhante = asyncHandler(async (req: AuthRequest, res: Res
 export const desativarAcompanhante = asyncHandler(async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
 
-  const result = await pool.query(
+  await pool.query(
     'DELETE FROM acompanhantes_ativas_dia WHERE acompanhante_id = $1 AND data = CURRENT_DATE',
     [id]
   );
