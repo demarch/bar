@@ -5,11 +5,17 @@ const WS_URL = import.meta.env.VITE_WS_URL || 'http://localhost:3001';
 class SocketService {
   private socket: Socket | null = null;
 
-  connect() {
+  connect(token?: string) {
     if (!this.socket) {
+      const auth: any = {};
+      if (token) {
+        auth.token = token;
+      }
+
       this.socket = io(WS_URL, {
         transports: ['websocket'],
         autoConnect: true,
+        auth,
       });
 
       this.socket.on('connect', () => {
@@ -21,7 +27,7 @@ class SocketService {
       });
 
       this.socket.on('connect_error', (error) => {
-        console.error('Erro de conexão do socket:', error);
+        console.error('Erro de conexão do socket:', error.message);
       });
     }
     return this.socket;

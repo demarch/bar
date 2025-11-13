@@ -42,21 +42,23 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 function App() {
-  const { loadUser, isAuthenticated } = useAuthStore();
+  const { loadUser, isAuthenticated, token } = useAuthStore();
 
   useEffect(() => {
     loadUser();
   }, [loadUser]);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      socketService.connect();
+    if (isAuthenticated && token) {
+      socketService.connect(token);
+    } else {
+      socketService.disconnect();
     }
 
     return () => {
       socketService.disconnect();
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, token]);
 
   return (
     <QueryClientProvider client={queryClient}>

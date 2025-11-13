@@ -164,7 +164,7 @@ export const finalizarOcupacao = asyncHandler(async (req: AuthRequest, res: Resp
       `INSERT INTO itens_comanda
        (comanda_id, produto_id, acompanhante_id, quantidade, valor_unitario, valor_total, tipo_item, usuario_id)
        VALUES ($1, NULL, $2, 1, $3, $3, 'quarto', $4)`,
-      [ocupacao.comanda_id, ocupacao.acompanhante_id, valor_cobrado, 1]
+      [ocupacao.comanda_id, ocupacao.acompanhante_id, valor_cobrado, req.user.id]
     );
   }
 

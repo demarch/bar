@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import http from 'http';
 import { Server as SocketServer } from 'socket.io';
 import rateLimit from 'express-rate-limit';
+import jwt from 'jsonwebtoken';
 
 // Config
 dotenv.config();
@@ -73,11 +74,39 @@ app.use('/api/quartos', quartoRoutes);
 app.use(errorHandler);
 
 // ============================================
+// WEBSOCKET AUTHENTICATION
+// ============================================
+
+interface SocketUser {
+  id: number;
+  login: string;
+  tipo: string;
+}
+
+// Middleware de autenticação WebSocket
+io.use((socket, next) => {
+  const token = socket.handshake.auth.token;
+
+  if (!token) {
+    return next(new Error('Token de autenticação não fornecido'));
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default_secret') as SocketUser;
+    socket.data.user = decoded;
+    next();
+  } catch (error) {
+    next(new Error('Token inválido ou expirado'));
+  }
+});
+
+// ============================================
 // WEBSOCKET HANDLERS
 // ============================================
 
 io.on('connection', (socket) => {
-  console.log('✅ Cliente conectado:', socket.id);
+  const user = socket.data.user as SocketUser;
+  console.log('✅ Cliente conectado:', socket.id, '| Usuário:', user.login);
 
   // Juntar sala de comandas abertas
   socket.join('comandas-abertas');

@@ -322,7 +322,7 @@ INSERT INTO configuracoes_sistema (chave, valor, tipo, descricao) VALUES
 -- Usuário admin padrão (senha: admin123)
 -- Hash gerado com bcrypt para 'admin123'
 INSERT INTO usuarios (nome, login, senha, tipo, ativo) VALUES
-    ('Administrador', 'admin', '$2b$10$rZ5qX8p0vJ7KZ0YvJ7KZ0u7KZ0YvJ7KZ0YvJ7KZ0YvJ7KZ0YvJ7KZ.', 'admin', true);
+    ('Administrador', 'admin', '$2b$10$J2Z.GBAkxZ4dkCsdQlo./eNGENaC9BV/KQvfcA5onM3lvwPHE21by', 'admin', true);
 
 -- Comentário: A senha 'admin123' deve ser alterada no primeiro acesso!
 -- Para gerar um novo hash, use: bcrypt.hash('sua_senha', 10)
