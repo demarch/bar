@@ -5,9 +5,9 @@ services:
     image: postgres:15-alpine
     container_name: bar-postgres
     environment:
-      POSTGRES_DB: bar_system
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: senha_segura_2024
+      POSTGRES_DB: ${POSTGRES_DB:-bar_system}
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Erro - Defina POSTGRES_PASSWORD no arquivo .env}
     ports:
       - "5432:5432"
     volumes:
@@ -16,7 +16,7 @@ services:
     networks:
       - bar-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin -d bar_system"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-admin} -d ${POSTGRES_DB:-bar_system}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -33,6 +33,10 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    # Adicionar persistência (Task #5)
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
 
   backend:
     build:
@@ -40,19 +44,24 @@ services:
       dockerfile: Dockerfile
     container_name: bar-backend
     ports:
-      - "3001:3001"
+      - "${BACKEND_PORT:-3001}:${PORT:-3001}"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     environment:
-      NODE_ENV: production
-      PORT: 3001
-      DATABASE_URL: postgresql://admin:senha_segura_2024@postgres:5432/bar_system
-      REDIS_URL: redis://redis:6379
-      JWT_SECRET: sua_chave_secreta_muito_segura_2024
-      JWT_REFRESH_SECRET: sua_chave_refresh_muito_segura_2024
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: ${PORT:-3001}
+      DATABASE_URL: ${DATABASE_URL:?Erro - Defina DATABASE_URL no arquivo .env}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      JWT_SECRET: ${JWT_SECRET:?Erro - Defina JWT_SECRET no arquivo .env}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Erro - Defina JWT_REFRESH_SECRET no arquivo .env}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1h}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      NOME_ESTABELECIMENTO: ${NOME_ESTABELECIMENTO:-Meu Bar}
+      PERCENTUAL_COMISSAO_PADRAO: ${PERCENTUAL_COMISSAO_PADRAO:-40}
     volumes:
       - ./backend:/app
       - /app/node_modules
@@ -66,12 +75,12 @@ services:
       dockerfile: Dockerfile
     container_name: bar-frontend
     ports:
-      - "3000:3000"
+      - "${FRONTEND_PORT:-3000}:3000"
     depends_on:
       - backend
     environment:
-      VITE_API_URL: http://localhost:3001
-      VITE_WS_URL: ws://localhost:3001
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:3001}
+      VITE_WS_URL: ${VITE_WS_URL:-ws://localhost:3001}
     volumes:
       - ./frontend:/app
       - /app/node_modules
@@ -81,6 +90,7 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:
 
 networks:
   bar-network:

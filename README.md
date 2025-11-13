@@ -69,10 +69,18 @@ cd bar
 
 2. Configure as variáveis de ambiente:
 ```bash
-# Backend
-cp backend/.env.example backend/.env
+# Copie o arquivo de exemplo
+cp .env.example .env
 
-# Edite o arquivo backend/.env conforme necessário
+# IMPORTANTE: Edite o arquivo .env e altere TODOS os valores marcados com CHANGE_ME
+# Especialmente: POSTGRES_PASSWORD, JWT_SECRET, JWT_REFRESH_SECRET
+nano .env  # ou use seu editor preferido
+```
+
+**⚠️ ATENÇÃO:** Nunca use as senhas padrão em produção! Gere secrets seguros:
+```bash
+# Para gerar um secret seguro, execute:
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
 3. Inicie os containers:

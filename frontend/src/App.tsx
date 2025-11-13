@@ -7,6 +7,10 @@ import socketService from './services/socket';
 // Pages
 import { Login } from './pages/Login';
 import { PDV } from './pages/PDV';
+import { Caixa } from './pages/Caixa';
+import { Quartos } from './pages/Quartos';
+import { Admin } from './pages/Admin';
+import { Relatorios } from './pages/Relatorios';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -42,21 +46,23 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 function App() {
-  const { loadUser, isAuthenticated } = useAuthStore();
+  const { loadUser, isAuthenticated, token } = useAuthStore();
 
   useEffect(() => {
     loadUser();
   }, [loadUser]);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      socketService.connect();
+    if (isAuthenticated && token) {
+      socketService.connect(token);
+    } else {
+      socketService.disconnect();
     }
 
     return () => {
       socketService.disconnect();
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, token]);
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -68,6 +74,38 @@ function App() {
             element={
               <ProtectedRoute>
                 <PDV />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/caixa"
+            element={
+              <ProtectedRoute>
+                <Caixa />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/quartos"
+            element={
+              <ProtectedRoute>
+                <Quartos />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute>
+                <Admin />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/relatorios"
+            element={
+              <ProtectedRoute>
+                <Relatorios />
               </ProtectedRoute>
             }
           />

@@ -87,22 +87,29 @@ export const useComandas = () => {
 
   // Fechar comanda
   const fecharComandaMutation = useMutation({
-    mutationFn: async (data: {
+    mutationFn: async ({
+      id,
+      options,
+    }: {
       id: number;
-      forma_pagamento: string;
-      observacoes?: string;
+      options: { forma_pagamento: string; observacoes?: string };
     }) => {
-      const response = await api.put(`/comandas/${data.id}/fechar`, {
-        forma_pagamento: data.forma_pagamento,
-        observacoes: data.observacoes,
-      });
+      const response = await api.put(`/comandas/${id}/fechar`, options);
       return response.data.data;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['comandas'] });
+      queryClient.invalidateQueries({ queryKey: ['caixa-aberto'] });
       socketService.emit('comanda:fechada', data);
     },
   });
+
+  const fecharComanda = (
+    id: number,
+    options: { forma_pagamento: string; observacoes?: string }
+  ) => {
+    return fecharComandaMutation.mutateAsync({ id, options });
+  };
 
   return {
     comandas,
@@ -111,6 +118,6 @@ export const useComandas = () => {
     buscarComanda,
     criarComanda: criarComandaMutation.mutateAsync,
     adicionarItem: adicionarItemMutation.mutateAsync,
-    fecharComanda: fecharComandaMutation.mutateAsync,
+    fecharComanda,
   };
 };
