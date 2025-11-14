@@ -146,6 +146,49 @@ export const atualizarAcompanhante = asyncHandler(async (req: AuthRequest, res: 
   res.json(response);
 });
 
+// Excluir acompanhante
+export const excluirAcompanhante = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+
+  // Verificar se acompanhante existe
+  const acompanhante = await pool.query(
+    'SELECT * FROM acompanhantes WHERE id = $1',
+    [id]
+  );
+
+  if (acompanhante.rows.length === 0) {
+    throw new AppError('Acompanhante não encontrada', 404);
+  }
+
+  // Verificar se há vendas/comissões associadas
+  const vendasAssociadas = await pool.query(
+    'SELECT COUNT(*) as total FROM itens_comanda WHERE acompanhante_id = $1',
+    [id]
+  );
+
+  const totalVendas = parseInt(vendasAssociadas.rows[0].total);
+
+  if (totalVendas > 0) {
+    throw new AppError(
+      `Não é possível excluir esta acompanhante. Ela possui ${totalVendas} venda(s) registrada(s). Para manter a integridade dos dados, desative a acompanhante ao invés de excluí-la.`,
+      400
+    );
+  }
+
+  // Excluir acompanhante (CASCADE vai remover registros relacionados em pulseiras_ativas_dia e acompanhantes_ativas_dia)
+  await pool.query(
+    'DELETE FROM acompanhantes WHERE id = $1',
+    [id]
+  );
+
+  const response: ApiResponse = {
+    success: true,
+    message: 'Acompanhante excluída com sucesso',
+  };
+
+  res.json(response);
+});
+
 // Ativar acompanhante para o dia
 export const ativarAcompanhante = asyncHandler(async (req: AuthRequest, res: Response) => {
   const { id } = req.params;

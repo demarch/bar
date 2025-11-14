@@ -4,7 +4,7 @@ import { useAcompanhantesAtivas } from '../../hooks/useAcompanhantes';
 import { AcompanhanteModal } from './AcompanhanteModal';
 
 export const AcompanhantesTab: React.FC = () => {
-  const { acompanhantes, isLoadingAcompanhantes, ativarAcompanhanteDia, desativarAcompanhanteDia } = useAdmin();
+  const { acompanhantes, isLoadingAcompanhantes, excluirAcompanhante, ativarAcompanhanteDia, desativarAcompanhanteDia } = useAdmin();
   const { acompanhantesAtivas } = useAcompanhantesAtivas();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAcompanhante, setEditingAcompanhante] = useState<Acompanhante | null>(null);
@@ -12,6 +12,19 @@ export const AcompanhantesTab: React.FC = () => {
   const handleEdit = (acompanhante: Acompanhante) => {
     setEditingAcompanhante(acompanhante);
     setIsModalOpen(true);
+  };
+
+  const handleDelete = async (acompanhante: Acompanhante) => {
+    if (!window.confirm(`Tem certeza que deseja excluir a acompanhante "${acompanhante.nome}"?\n\nEsta ação não pode ser desfeita.`)) {
+      return;
+    }
+
+    try {
+      await excluirAcompanhante(acompanhante.id);
+      alert('Acompanhante excluída com sucesso!');
+    } catch (error: any) {
+      alert(error.response?.data?.error || 'Erro ao excluir acompanhante');
+    }
   };
 
   const handleToggleDiaAtiva = async (acompanhante: Acompanhante) => {
@@ -149,9 +162,15 @@ export const AcompanhantesTab: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
                         onClick={() => handleEdit(acompanhante)}
-                        className="text-primary-600 hover:text-primary-900"
+                        className="text-primary-600 hover:text-primary-900 mr-4"
                       >
                         Editar
+                      </button>
+                      <button
+                        onClick={() => handleDelete(acompanhante)}
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        Excluir
                       </button>
                     </td>
                   </tr>
