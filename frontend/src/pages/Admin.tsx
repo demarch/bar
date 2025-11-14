@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
 import { Layout } from '../components/Layout';
+import { DashboardAdmin } from '../components/admin/DashboardAdmin';
 import { ProdutosTab } from '../components/admin/ProdutosTab';
 import { CategoriasTab } from '../components/admin/CategoriasTab';
 import { AcompanhantesTab } from '../components/admin/AcompanhantesTab';
 import { UsuariosTab } from '../components/admin/UsuariosTab';
 import { ConfiguracoesTab } from '../components/admin/ConfiguracoesTab';
 
-type TabType = 'produtos' | 'categorias' | 'acompanhantes' | 'usuarios' | 'configuracoes';
+type TabType = 'dashboard' | 'produtos' | 'categorias' | 'acompanhantes' | 'usuarios' | 'configuracoes';
 
 export const Admin: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<TabType>('produtos');
+  const [activeTab, setActiveTab] = useState<TabType>('dashboard');
 
   const tabs = [
+    { id: 'dashboard' as TabType, label: 'Dashboard', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
     { id: 'produtos' as TabType, label: 'Produtos', icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' },
     { id: 'categorias' as TabType, label: 'Categorias', icon: 'M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z' },
     { id: 'acompanhantes' as TabType, label: 'Acompanhantes', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' },
@@ -52,6 +54,7 @@ export const Admin: React.FC = () => {
 
           {/* Tab Content */}
           <div className="p-6">
+            {activeTab === 'dashboard' && <DashboardAdmin />}
             {activeTab === 'produtos' && <ProdutosTab />}
             {activeTab === 'categorias' && <CategoriasTab />}
             {activeTab === 'acompanhantes' && <AcompanhantesTab />}
