@@ -29,6 +29,7 @@ import quartoAdminRoutes from './routes/quartosAdmin';
 import usuarioRoutes from './routes/usuarios';
 import relatorioRoutes from './routes/relatorios';
 import migrationRoutes from './routes/migrationRoutes';
+import dashboardRoutes from './routes/dashboard';
 
 // Initialize Express
 const app = express();
@@ -74,6 +75,7 @@ app.use('/api/acompanhantes', acompanhanteRoutes);
 app.use('/api/caixa', caixaRoutes);
 app.use('/api/quartos', quartoRoutes);
 app.use('/api/admin/quartos', quartoAdminRoutes);
+app.use('/api/admin/dashboard', dashboardRoutes);
 app.use('/api/usuarios', usuarioRoutes);
 app.use('/api/relatorios', relatorioRoutes);
 app.use('/api/migrations', migrationRoutes);
