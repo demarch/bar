@@ -208,11 +208,6 @@ export const ServicoQuartoModal: React.FC<ServicoQuartoModalProps> = ({
                             <span className="text-gray-500 ml-2">({acomp.apelido})</span>
                           )}
                         </span>
-                        {acomp.numero_pulseira && (
-                          <span className="ml-auto badge-info">
-                            Pulseira {acomp.numero_pulseira}
-                          </span>
-                        )}
                       </label>
                     ))}
                   </div>
