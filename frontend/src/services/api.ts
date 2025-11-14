@@ -13,8 +13,8 @@ export const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    if (token && config.headers) {
+      config.headers['Authorization'] = `Bearer ${token}`;
     }
     return config;
   },
@@ -46,7 +46,9 @@ api.interceptors.response.use(
         const { token } = response.data.data;
         localStorage.setItem('token', token);
 
-        originalRequest.headers.Authorization = `Bearer ${token}`;
+        if (originalRequest.headers) {
+          originalRequest.headers['Authorization'] = `Bearer ${token}`;
+        }
         return api(originalRequest);
       } catch (err) {
         // Limpar storage e redirecionar para login
