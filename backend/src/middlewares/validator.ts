@@ -58,6 +58,8 @@ export const schemas = {
     telefone: Joi.string().optional().max(20),
     documento: Joi.string().optional().max(20),
     percentual_comissao: Joi.number().optional().min(0).max(100),
+    tipo_acompanhante: Joi.string().optional().valid('fixa', 'rotativa'),
+    numero_pulseira_fixa: Joi.number().optional().min(1).max(1000),
   }),
 
   ocuparQuarto: Joi.object({

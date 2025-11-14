@@ -1,7 +1,7 @@
 -- ============================================
 -- SCRIPT DE MIGRAÇÃO CONSOLIDADO
 -- Data: 2025-11-14
--- Descrição: Aplica todas as migrações relacionadas a comissão fixa
+-- Descrição: Aplica todas as migrações do sistema
 -- ============================================
 
 -- Executar as migrações em ordem
@@ -35,6 +35,376 @@ BEGIN
         RAISE NOTICE 'Produto "Drink Comissionado" já existe';
     END IF;
 END $$;
+
+-- Migration 003: Sistema de Pulseiras para Acompanhantes
+DO $$
+BEGIN
+    -- Adicionar tipo_acompanhante se não existir
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'acompanhantes' AND column_name = 'tipo_acompanhante'
+    ) THEN
+        ALTER TABLE acompanhantes
+        ADD COLUMN tipo_acompanhante VARCHAR(20) DEFAULT 'rotativa'
+        CHECK (tipo_acompanhante IN ('fixa', 'rotativa'));
+        RAISE NOTICE 'Campo tipo_acompanhante adicionado à tabela acompanhantes';
+    END IF;
+
+    -- Adicionar numero_pulseira_fixa se não existir
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'acompanhantes' AND column_name = 'numero_pulseira_fixa'
+    ) THEN
+        ALTER TABLE acompanhantes ADD COLUMN numero_pulseira_fixa INTEGER;
+        RAISE NOTICE 'Campo numero_pulseira_fixa adicionado à tabela acompanhantes';
+    END IF;
+
+    -- Adicionar constraints se não existirem
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE table_name = 'acompanhantes' AND constraint_name = 'uq_pulseira_fixa'
+    ) THEN
+        ALTER TABLE acompanhantes ADD CONSTRAINT uq_pulseira_fixa UNIQUE (numero_pulseira_fixa);
+        RAISE NOTICE 'Constraint uq_pulseira_fixa adicionada';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE table_name = 'acompanhantes' AND constraint_name = 'check_pulseira_fixa'
+    ) THEN
+        ALTER TABLE acompanhantes
+        ADD CONSTRAINT check_pulseira_fixa
+        CHECK (
+            (tipo_acompanhante = 'fixa' AND numero_pulseira_fixa IS NOT NULL AND numero_pulseira_fixa BETWEEN 1 AND 1000) OR
+            (tipo_acompanhante = 'rotativa' AND numero_pulseira_fixa IS NULL)
+        );
+        RAISE NOTICE 'Constraint check_pulseira_fixa adicionada';
+    END IF;
+
+    -- Criar tabela pulseiras_ativas_dia se não existir
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'pulseiras_ativas_dia') THEN
+        CREATE TABLE pulseiras_ativas_dia (
+            id SERIAL PRIMARY KEY,
+            numero_pulseira INTEGER NOT NULL CHECK (numero_pulseira BETWEEN 1 AND 1000),
+            acompanhante_id INTEGER NOT NULL REFERENCES acompanhantes(id) ON DELETE CASCADE,
+            data DATE NOT NULL DEFAULT CURRENT_DATE,
+            hora_atribuicao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            hora_devolucao TIMESTAMP,
+            UNIQUE(numero_pulseira, data),
+            UNIQUE(acompanhante_id, data)
+        );
+        RAISE NOTICE 'Tabela pulseiras_ativas_dia criada';
+    END IF;
+
+    -- Adicionar numero_pulseira à acompanhantes_ativas_dia se não existir
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'acompanhantes_ativas_dia' AND column_name = 'numero_pulseira'
+    ) THEN
+        ALTER TABLE acompanhantes_ativas_dia ADD COLUMN numero_pulseira INTEGER;
+        ALTER TABLE acompanhantes_ativas_dia
+        ADD CONSTRAINT check_numero_pulseira_range
+        CHECK (numero_pulseira IS NULL OR (numero_pulseira BETWEEN 1 AND 1000));
+        RAISE NOTICE 'Campo numero_pulseira adicionado à tabela acompanhantes_ativas_dia';
+    END IF;
+
+    -- Criar views e funções
+    RAISE NOTICE 'Criando views e funções do sistema de pulseiras...';
+END $$;
+
+-- View para pulseiras disponíveis
+CREATE OR REPLACE VIEW vw_pulseiras_disponiveis AS
+WITH numeros AS (
+    SELECT generate_series(1, 1000) AS numero
+),
+pulseiras_fixas AS (
+    SELECT numero_pulseira_fixa as numero
+    FROM acompanhantes
+    WHERE tipo_acompanhante = 'fixa'
+    AND numero_pulseira_fixa IS NOT NULL
+),
+pulseiras_em_uso_hoje AS (
+    SELECT numero_pulseira
+    FROM pulseiras_ativas_dia
+    WHERE data = CURRENT_DATE
+    AND hora_devolucao IS NULL
+)
+SELECT
+    n.numero,
+    CASE
+        WHEN pf.numero IS NOT NULL THEN 'reservada_fixa'
+        WHEN pu.numero_pulseira IS NOT NULL THEN 'em_uso'
+        ELSE 'disponivel'
+    END as status,
+    a.id as acompanhante_id,
+    a.nome as acompanhante_nome
+FROM numeros n
+LEFT JOIN pulseiras_fixas pf ON n.numero = pf.numero
+LEFT JOIN pulseiras_em_uso_hoje pu ON n.numero = pu.numero_pulseira
+LEFT JOIN acompanhantes a ON a.numero_pulseira_fixa = n.numero AND a.tipo_acompanhante = 'fixa'
+ORDER BY n.numero;
+
+-- View para pulseiras ativas hoje
+CREATE OR REPLACE VIEW vw_pulseiras_ativas_hoje AS
+SELECT
+    pad.numero_pulseira,
+    a.id as acompanhante_id,
+    a.nome as acompanhante_nome,
+    a.apelido as acompanhante_apelido,
+    a.tipo_acompanhante,
+    pad.hora_atribuicao,
+    aad.hora_ativacao
+FROM pulseiras_ativas_dia pad
+JOIN acompanhantes a ON a.id = pad.acompanhante_id
+LEFT JOIN acompanhantes_ativas_dia aad ON aad.acompanhante_id = a.id AND aad.data = pad.data
+WHERE pad.data = CURRENT_DATE
+AND pad.hora_devolucao IS NULL
+ORDER BY pad.numero_pulseira;
+
+-- Função para atribuir pulseira
+CREATE OR REPLACE FUNCTION atribuir_pulseira(p_acompanhante_id INTEGER)
+RETURNS INTEGER AS $$
+DECLARE
+    v_numero_pulseira INTEGER;
+    v_tipo_acompanhante VARCHAR(20);
+    v_pulseira_fixa INTEGER;
+BEGIN
+    SELECT tipo_acompanhante, numero_pulseira_fixa
+    INTO v_tipo_acompanhante, v_pulseira_fixa
+    FROM acompanhantes
+    WHERE id = p_acompanhante_id;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Acompanhante não encontrada';
+    END IF;
+
+    SELECT numero_pulseira INTO v_numero_pulseira
+    FROM pulseiras_ativas_dia
+    WHERE acompanhante_id = p_acompanhante_id
+    AND data = CURRENT_DATE
+    AND hora_devolucao IS NULL;
+
+    IF FOUND THEN
+        RETURN v_numero_pulseira;
+    END IF;
+
+    IF v_tipo_acompanhante = 'fixa' THEN
+        v_numero_pulseira := v_pulseira_fixa;
+        IF EXISTS (
+            SELECT 1 FROM pulseiras_ativas_dia
+            WHERE numero_pulseira = v_numero_pulseira
+            AND data = CURRENT_DATE
+            AND hora_devolucao IS NULL
+        ) THEN
+            RAISE EXCEPTION 'Pulseira fixa % já está em uso', v_numero_pulseira;
+        END IF;
+    ELSE
+        SELECT numero INTO v_numero_pulseira
+        FROM vw_pulseiras_disponiveis
+        WHERE status = 'disponivel'
+        ORDER BY numero
+        LIMIT 1;
+
+        IF v_numero_pulseira IS NULL THEN
+            RAISE EXCEPTION 'Não há pulseiras disponíveis';
+        END IF;
+    END IF;
+
+    INSERT INTO pulseiras_ativas_dia (numero_pulseira, acompanhante_id, data)
+    VALUES (v_numero_pulseira, p_acompanhante_id, CURRENT_DATE);
+
+    UPDATE acompanhantes_ativas_dia
+    SET numero_pulseira = v_numero_pulseira
+    WHERE acompanhante_id = p_acompanhante_id
+    AND data = CURRENT_DATE;
+
+    RETURN v_numero_pulseira;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Função para devolver pulseira
+CREATE OR REPLACE FUNCTION devolver_pulseira(p_acompanhante_id INTEGER)
+RETURNS VOID AS $$
+BEGIN
+    UPDATE pulseiras_ativas_dia
+    SET hora_devolucao = CURRENT_TIMESTAMP
+    WHERE acompanhante_id = p_acompanhante_id
+    AND data = CURRENT_DATE
+    AND hora_devolucao IS NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Migration 004: Controle de Pagamento de Comissões
+DO $$
+BEGIN
+    -- Remover constraint única se existir
+    IF EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE table_name = 'acompanhantes_ativas_dia'
+        AND constraint_name = 'acompanhantes_ativas_dia_acompanhante_id_data_key'
+    ) THEN
+        ALTER TABLE acompanhantes_ativas_dia
+        DROP CONSTRAINT acompanhantes_ativas_dia_acompanhante_id_data_key;
+        RAISE NOTICE 'Constraint única removida - permitindo múltiplas ativações por dia';
+    END IF;
+
+    -- Adicionar novos campos se não existirem
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'acompanhantes_ativas_dia' AND column_name = 'hora_desativacao'
+    ) THEN
+        ALTER TABLE acompanhantes_ativas_dia
+        ADD COLUMN hora_desativacao TIMESTAMP,
+        ADD COLUMN status_periodo VARCHAR(20) DEFAULT 'ativa'
+          CHECK (status_periodo IN ('ativa', 'encerrada_pendente', 'encerrada_paga')),
+        ADD COLUMN valor_comissoes_periodo DECIMAL(10,2) DEFAULT 0,
+        ADD COLUMN data_pagamento TIMESTAMP,
+        ADD COLUMN observacoes_pagamento TEXT;
+        RAISE NOTICE 'Campos de controle de pagamento adicionados';
+    END IF;
+
+    -- Criar índices
+    RAISE NOTICE 'Criando índices de performance...';
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_acompanhantes_ativas_status
+  ON acompanhantes_ativas_dia(status_periodo);
+CREATE INDEX IF NOT EXISTS idx_acompanhantes_ativas_data_status
+  ON acompanhantes_ativas_dia(data, status_periodo);
+
+-- View de acompanhantes presentes hoje
+CREATE OR REPLACE VIEW vw_acompanhantes_presentes_hoje AS
+SELECT
+    a.id as acompanhante_id,
+    a.nome,
+    a.apelido,
+    a.tipo_acompanhante,
+    a.numero_pulseira_fixa,
+    a.percentual_comissao,
+    pad.numero_pulseira,
+    aad_atual.id as periodo_ativo_id,
+    aad_atual.hora_ativacao as hora_ativacao_atual,
+    aad_atual.status_periodo as status_atual,
+    COUNT(aad_todos.id) as total_ativacoes_dia,
+    COUNT(CASE WHEN aad_todos.status_periodo = 'ativa' THEN 1 END) as periodos_ativos,
+    COUNT(CASE WHEN aad_todos.status_periodo = 'encerrada_pendente' THEN 1 END) as periodos_pendentes,
+    COUNT(CASE WHEN aad_todos.status_periodo = 'encerrada_paga' THEN 1 END) as periodos_pagos,
+    COALESCE(SUM(CASE WHEN aad_todos.status_periodo = 'ativa' THEN aad_todos.valor_comissoes_periodo END), 0) as comissoes_periodo_atual,
+    COALESCE(SUM(CASE WHEN aad_todos.status_periodo = 'encerrada_pendente' THEN aad_todos.valor_comissoes_periodo END), 0) as comissoes_pendentes,
+    COALESCE(SUM(CASE WHEN aad_todos.status_periodo = 'encerrada_paga' THEN aad_todos.valor_comissoes_periodo END), 0) as comissoes_pagas,
+    COALESCE(SUM(aad_todos.valor_comissoes_periodo), 0) as comissoes_total_dia
+FROM acompanhantes a
+LEFT JOIN acompanhantes_ativas_dia aad_todos
+  ON aad_todos.acompanhante_id = a.id AND aad_todos.data = CURRENT_DATE
+LEFT JOIN acompanhantes_ativas_dia aad_atual
+  ON aad_atual.acompanhante_id = a.id AND aad_atual.data = CURRENT_DATE AND aad_atual.status_periodo = 'ativa'
+LEFT JOIN pulseiras_ativas_dia pad
+  ON pad.acompanhante_id = a.id AND pad.data = CURRENT_DATE AND pad.hora_devolucao IS NULL
+WHERE aad_todos.id IS NOT NULL
+GROUP BY a.id, a.nome, a.apelido, a.tipo_acompanhante, a.numero_pulseira_fixa,
+  a.percentual_comissao, pad.numero_pulseira, aad_atual.id, aad_atual.hora_ativacao, aad_atual.status_periodo
+ORDER BY CASE WHEN aad_atual.status_periodo = 'ativa' THEN 1
+  WHEN COUNT(CASE WHEN aad_todos.status_periodo = 'encerrada_pendente' THEN 1 END) > 0 THEN 2 ELSE 3 END, a.nome;
+
+-- View de histórico de ativações
+CREATE OR REPLACE VIEW vw_historico_ativacoes_dia AS
+SELECT
+    aad.id,
+    aad.acompanhante_id,
+    a.nome as acompanhante_nome,
+    a.apelido as acompanhante_apelido,
+    a.tipo_acompanhante,
+    aad.data,
+    aad.numero_pulseira,
+    aad.hora_ativacao,
+    aad.hora_desativacao,
+    aad.status_periodo,
+    aad.valor_comissoes_periodo,
+    aad.data_pagamento,
+    aad.observacoes_pagamento,
+    CASE
+      WHEN aad.hora_desativacao IS NOT NULL THEN
+        EXTRACT(EPOCH FROM (aad.hora_desativacao - aad.hora_ativacao)) / 60
+      ELSE
+        EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - aad.hora_ativacao)) / 60
+    END as duracao_minutos
+FROM acompanhantes_ativas_dia aad
+JOIN acompanhantes a ON a.id = aad.acompanhante_id
+WHERE aad.data = CURRENT_DATE
+ORDER BY aad.hora_ativacao DESC;
+
+-- Função para encerrar período
+CREATE OR REPLACE FUNCTION encerrar_periodo_acompanhante(
+    p_periodo_id INTEGER,
+    p_marcar_como_paga BOOLEAN DEFAULT false
+)
+RETURNS TABLE(
+    periodo_id INTEGER,
+    valor_comissoes DECIMAL,
+    total_itens INTEGER,
+    status VARCHAR
+) AS $$
+DECLARE
+    v_acompanhante_id INTEGER;
+    v_hora_ativacao TIMESTAMP;
+    v_valor_comissoes DECIMAL;
+    v_total_itens INTEGER;
+    v_novo_status VARCHAR(20);
+BEGIN
+    SELECT acompanhante_id, hora_ativacao
+    INTO v_acompanhante_id, v_hora_ativacao
+    FROM acompanhantes_ativas_dia
+    WHERE id = p_periodo_id AND status_periodo = 'ativa';
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Período não encontrado ou já encerrado';
+    END IF;
+
+    SELECT COALESCE(SUM(ic.valor_comissao), 0), COUNT(*)
+    INTO v_valor_comissoes, v_total_itens
+    FROM itens_comanda ic
+    JOIN comandas c ON c.id = ic.comanda_id
+    WHERE ic.acompanhante_id = v_acompanhante_id
+      AND ic.valor_comissao > 0
+      AND ic.cancelado = false
+      AND ic.created_at >= v_hora_ativacao
+      AND ic.created_at <= CURRENT_TIMESTAMP;
+
+    v_novo_status := CASE WHEN p_marcar_como_paga THEN 'encerrada_paga' ELSE 'encerrada_pendente' END;
+
+    UPDATE acompanhantes_ativas_dia
+    SET hora_desativacao = CURRENT_TIMESTAMP,
+        status_periodo = v_novo_status,
+        valor_comissoes_periodo = v_valor_comissoes,
+        data_pagamento = CASE WHEN p_marcar_como_paga THEN CURRENT_TIMESTAMP ELSE NULL END
+    WHERE id = p_periodo_id;
+
+    PERFORM devolver_pulseira(v_acompanhante_id);
+
+    RETURN QUERY SELECT p_periodo_id, v_valor_comissoes, v_total_itens, v_novo_status;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Função para marcar como paga
+CREATE OR REPLACE FUNCTION marcar_comissoes_pagas(
+    p_periodo_id INTEGER,
+    p_observacoes TEXT DEFAULT NULL
+)
+RETURNS BOOLEAN AS $$
+BEGIN
+    UPDATE acompanhantes_ativas_dia
+    SET status_periodo = 'encerrada_paga',
+        data_pagamento = CURRENT_TIMESTAMP,
+        observacoes_pagamento = p_observacoes
+    WHERE id = p_periodo_id AND status_periodo = 'encerrada_pendente';
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Período não encontrado ou não está pendente de pagamento';
+    END IF;
+
+    RETURN true;
+END;
+$$ LANGUAGE plpgsql;
 
 COMMIT;
 
