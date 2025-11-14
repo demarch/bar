@@ -30,9 +30,9 @@ export const useCaixa = () => {
       });
       return response.data.data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['caixa'] });
-      socketService.emit('caixa:atualizado', {});
+      socketService.emit('caixa:atualizado', data);
     },
   });
 
@@ -42,9 +42,9 @@ export const useCaixa = () => {
       const response = await api.put<ApiResponse<MovimentoCaixa>>('/caixa/fechar', data);
       return response.data.data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['caixa'] });
-      socketService.emit('caixa:atualizado', {});
+      socketService.emit('caixa:atualizado', data);
     },
   });
 
@@ -54,9 +54,13 @@ export const useCaixa = () => {
       const response = await api.post('/caixa/sangria', data);
       return response.data.data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['caixa'] });
-      socketService.emit('caixa:atualizado', {});
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['caixa'] });
+      // Buscar dados atualizados do caixa para emitir
+      const caixaAtualizado = queryClient.getQueryData<MovimentoCaixa>(['caixa', 'aberto']);
+      if (caixaAtualizado) {
+        socketService.emit('caixa:atualizado', caixaAtualizado);
+      }
     },
   });
 
