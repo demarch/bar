@@ -1,6 +1,32 @@
 # 🎯 Como Aplicar a Migration do Sistema de Pulseiras
 
-## Passo a Passo Rápido (Docker)
+## 🪟 WINDOWS - Escolha uma opção:
+
+### ⚡ Opção 1: Script Automático (Mais Fácil!)
+
+**PowerShell:**
+```powershell
+.\aplicar-migration.ps1
+```
+
+**CMD (Prompt de Comando):**
+```cmd
+aplicar-migration.bat
+```
+
+### 📝 Opção 2: Comando Manual PowerShell
+```powershell
+Get-Content backend/database/migrations/apply_all_migrations.sql | docker-compose exec -T postgres psql -U admin -d bar_system
+```
+
+### 🐙 Opção 3: Git Bash (se você tem Git instalado)
+```bash
+cat backend/database/migrations/apply_all_migrations.sql | docker-compose exec -T postgres psql -U admin -d bar_system
+```
+
+---
+
+## 🐧 LINUX / MAC
 
 ### 1️⃣ Certifique-se que o Docker está rodando
 
@@ -14,8 +40,6 @@ docker-compose up -d postgres
 ```
 
 ### 2️⃣ Aplique a Migration
-
-**Use este comando (copia e cola no terminal):**
 
 ```bash
 cat backend/database/migrations/apply_all_migrations.sql | \
