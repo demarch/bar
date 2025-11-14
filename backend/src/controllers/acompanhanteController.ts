@@ -343,3 +343,110 @@ export const estatisticasPulseiras = asyncHandler(async (_req: AuthRequest, res:
 
   res.json(response);
 });
+
+// Listar acompanhantes presentes hoje (com status de comissões)
+export const listarAcompanhantesPresentes = asyncHandler(async (_req: AuthRequest, res: Response) => {
+  const result = await pool.query(
+    `SELECT * FROM vw_acompanhantes_presentes_hoje ORDER BY
+     CASE
+       WHEN status_atual = 'ativa' THEN 1
+       WHEN periodos_pendentes > 0 THEN 2
+       ELSE 3
+     END,
+     nome`
+  );
+
+  const response: ApiResponse = {
+    success: true,
+    data: result.rows,
+  };
+
+  res.json(response);
+});
+
+// Encerrar período de acompanhante
+export const encerrarPeriodo = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { periodoId } = req.params;
+  const { marcar_como_paga } = req.body;
+
+  const result = await pool.query(
+    'SELECT * FROM encerrar_periodo_acompanhante($1, $2)',
+    [periodoId, marcar_como_paga || false]
+  );
+
+  if (result.rows.length === 0) {
+    throw new AppError('Erro ao encerrar período', 500);
+  }
+
+  const periodo = result.rows[0];
+
+  const response: ApiResponse = {
+    success: true,
+    data: {
+      periodo_id: periodo.periodo_id,
+      valor_comissoes: parseFloat(periodo.valor_comissoes),
+      total_itens: periodo.total_itens,
+      status: periodo.status,
+    },
+    message: `Período encerrado. ${periodo.status === 'encerrada_paga' ? 'Comissões pagas' : 'Comissões pendentes de pagamento'}`,
+  };
+
+  res.json(response);
+});
+
+// Marcar comissões como pagas
+export const marcarComissoesPagas = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { periodoId } = req.params;
+  const { observacoes } = req.body;
+
+  await pool.query(
+    'SELECT marcar_comissoes_pagas($1, $2)',
+    [periodoId, observacoes || null]
+  );
+
+  const response: ApiResponse = {
+    success: true,
+    message: 'Comissões marcadas como pagas com sucesso',
+  };
+
+  res.json(response);
+});
+
+// Listar histórico de ativações do dia
+export const listarHistoricoAtivacoes = asyncHandler(async (_req: AuthRequest, res: Response) => {
+  const result = await pool.query(
+    `SELECT * FROM vw_historico_ativacoes_dia ORDER BY hora_ativacao DESC`
+  );
+
+  const response: ApiResponse = {
+    success: true,
+    data: result.rows,
+  };
+
+  res.json(response);
+});
+
+// Estatísticas do dia
+export const estatisticasDia = asyncHandler(async (_req: AuthRequest, res: Response) => {
+  const result = await pool.query(`
+    SELECT
+      COUNT(DISTINCT acompanhante_id) as total_acompanhantes,
+      COUNT(*) as total_ativacoes,
+      COUNT(*) FILTER (WHERE status_periodo = 'ativa') as periodos_ativos,
+      COUNT(*) FILTER (WHERE status_periodo = 'encerrada_pendente') as periodos_pendentes,
+      COUNT(*) FILTER (WHERE status_periodo = 'encerrada_paga') as periodos_pagos,
+      COALESCE(SUM(valor_comissoes_periodo) FILTER (WHERE status_periodo = 'ativa'), 0) as comissoes_ativas,
+      COALESCE(SUM(valor_comissoes_periodo) FILTER (WHERE status_periodo = 'encerrada_pendente'), 0) as comissoes_pendentes,
+      COALESCE(SUM(valor_comissoes_periodo) FILTER (WHERE status_periodo = 'encerrada_paga'), 0) as comissoes_pagas,
+      COALESCE(SUM(valor_comissoes_periodo), 0) as comissoes_total
+    FROM acompanhantes_ativas_dia
+    WHERE data = CURRENT_DATE
+  `);
+
+  const response: ApiResponse = {
+    success: true,
+    data: result.rows[0],
+  };
+
+  res.json(response);
+});
