@@ -9,14 +9,9 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Build TypeScript
-RUN npm run build
-
-# Remove dev dependencies after build
-RUN npm prune --production
-
 # Expose port
 EXPOSE 3001
 
-# Start server
-CMD ["npm", "start"]
+# Build and start server
+# Build happens at startup to ensure dist folder is created with volume mounts
+CMD ["sh", "-c", "npm run build && npm start"]
