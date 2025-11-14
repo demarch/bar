@@ -23,6 +23,7 @@ export interface AuthRequest extends Request {
     login: string;
     tipo: UserType;
   };
+  token?: string; // Token JWT para uso em logout
 }
 
 // ============================================

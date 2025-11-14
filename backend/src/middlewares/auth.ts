@@ -1,6 +1,7 @@
 import { Response, NextFunction } from 'express';
 import jwt, { SignOptions } from 'jsonwebtoken';
 import { AuthRequest, UserType } from '../types';
+import { isBlacklisted } from '../services/tokenBlacklist';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret-key-change-me';
 
@@ -11,7 +12,7 @@ export interface JwtPayload {
 }
 
 // Middleware para verificar se o usuário está autenticado
-export const authenticate = (req: AuthRequest, res: Response, next: NextFunction): void => {
+export const authenticate = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
 
@@ -43,6 +44,16 @@ export const authenticate = (req: AuthRequest, res: Response, next: NextFunction
       return;
     }
 
+    // Verificar se o token está na blacklist
+    const isRevoked = await isBlacklisted(token);
+    if (isRevoked) {
+      res.status(401).json({
+        success: false,
+        error: 'Token revogado. Faça login novamente.'
+      });
+      return;
+    }
+
     jwt.verify(token, JWT_SECRET, (err, decoded) => {
       if (err) {
         res.status(401).json({
@@ -53,6 +64,7 @@ export const authenticate = (req: AuthRequest, res: Response, next: NextFunction
       }
 
       req.user = decoded as JwtPayload;
+      req.token = token; // Armazenar token para uso posterior (logout)
       next();
     });
   } catch (error) {
