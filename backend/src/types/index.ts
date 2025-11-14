@@ -77,6 +77,7 @@ export interface Produto {
   preco: number;
   tipo: ProdutoTipo;
   comissao_percentual?: number;
+  comissao_fixa?: number;
   ativo: boolean;
   created_at: Date;
   updated_at: Date;

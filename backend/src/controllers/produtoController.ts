@@ -81,13 +81,13 @@ export const buscarProduto = asyncHandler(async (req: AuthRequest, res: Response
 
 // Criar produto
 export const criarProduto = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const { nome, categoria_id, preco, tipo, comissao_percentual } = req.body;
+  const { nome, categoria_id, preco, tipo, comissao_percentual, comissao_fixa } = req.body;
 
   const result = await pool.query(
-    `INSERT INTO produtos (nome, categoria_id, preco, tipo, comissao_percentual)
-     VALUES ($1, $2, $3, $4, $5)
+    `INSERT INTO produtos (nome, categoria_id, preco, tipo, comissao_percentual, comissao_fixa)
+     VALUES ($1, $2, $3, $4, $5, $6)
      RETURNING *`,
-    [nome, categoria_id, preco, tipo, comissao_percentual]
+    [nome, categoria_id, preco, tipo, comissao_percentual, comissao_fixa]
   );
 
   const response: ApiResponse = {
@@ -102,14 +102,14 @@ export const criarProduto = asyncHandler(async (req: AuthRequest, res: Response)
 // Atualizar produto
 export const atualizarProduto = asyncHandler(async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
-  const { nome, categoria_id, preco, tipo, comissao_percentual } = req.body;
+  const { nome, categoria_id, preco, tipo, comissao_percentual, comissao_fixa } = req.body;
 
   const result = await pool.query(
     `UPDATE produtos
-     SET nome = $1, categoria_id = $2, preco = $3, tipo = $4, comissao_percentual = $5
-     WHERE id = $6
+     SET nome = $1, categoria_id = $2, preco = $3, tipo = $4, comissao_percentual = $5, comissao_fixa = $6
+     WHERE id = $7
      RETURNING *`,
-    [nome, categoria_id, preco, tipo, comissao_percentual, id]
+    [nome, categoria_id, preco, tipo, comissao_percentual, comissao_fixa, id]
   );
 
   if (result.rows.length === 0) {

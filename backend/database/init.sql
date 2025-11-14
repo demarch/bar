@@ -67,6 +67,7 @@ CREATE TABLE produtos (
     preco DECIMAL(10,2) NOT NULL,
     tipo VARCHAR(20) NOT NULL CHECK (tipo IN ('normal', 'comissionado')),
     comissao_percentual DECIMAL(5,2),
+    comissao_fixa DECIMAL(10,2),
     ativo BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -311,6 +312,10 @@ INSERT INTO produtos (nome, categoria_id, preco, tipo, comissao_percentual, ativ
     ('Dose Whisky Premium (Com.)', 6, 50.00, 'comissionado', 40.00, true),
     ('Champanhe (Com.)', 6, 100.00, 'comissionado', 40.00, true),
     ('Energético (Com.)', 6, 20.00, 'comissionado', 40.00, true);
+
+-- Bebida com comissão fixa
+INSERT INTO produtos (nome, categoria_id, preco, tipo, comissao_fixa, ativo) VALUES
+    ('Drink Comissionado', 6, 50.00, 'comissionado', 20.00, true);
 
 -- Configurações do sistema
 INSERT INTO configuracoes_sistema (chave, valor, tipo, descricao) VALUES

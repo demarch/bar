@@ -152,18 +152,24 @@ export const adicionarItem = asyncHandler(async (req: AuthRequest, res: Response
   if (produto.tipo === 'comissionado' && acompanhante_id) {
     tipo_item = 'comissionado';
 
-    // Buscar percentual de comissão da acompanhante
-    const acompanhanteResult = await pool.query(
-      'SELECT percentual_comissao FROM acompanhantes WHERE id = $1 AND ativa = true',
-      [acompanhante_id]
-    );
+    // Verificar se o produto tem comissão fixa
+    if (produto.comissao_fixa !== null && produto.comissao_fixa !== undefined) {
+      // Usar comissão fixa por quantidade
+      valor_comissao = produto.comissao_fixa * quantidade;
+    } else {
+      // Buscar percentual de comissão da acompanhante
+      const acompanhanteResult = await pool.query(
+        'SELECT percentual_comissao FROM acompanhantes WHERE id = $1 AND ativa = true',
+        [acompanhante_id]
+      );
 
-    if (acompanhanteResult.rows.length === 0) {
-      throw new AppError('Acompanhante não encontrada ou inativa', 404);
+      if (acompanhanteResult.rows.length === 0) {
+        throw new AppError('Acompanhante não encontrada ou inativa', 404);
+      }
+
+      const percentual = acompanhanteResult.rows[0].percentual_comissao;
+      valor_comissao = (valor_total * percentual) / 100;
     }
-
-    const percentual = acompanhanteResult.rows[0].percentual_comissao;
-    valor_comissao = (valor_total * percentual) / 100;
   }
 
   // Inserir item
