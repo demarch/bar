@@ -95,9 +95,13 @@ export const buscarComanda = asyncHandler(async (req: AuthRequest, res: Response
       ic.*,
       p.nome as produto_nome,
       p.categoria_id,
-      a.nome as acompanhante_nome
+      a.nome as acompanhante_nome,
+      CASE
+        WHEN ic.tipo_item = 'quarto' THEN 'Serviço de Quarto ' || ic.numero_quarto
+        ELSE p.nome
+      END as produto_nome
      FROM itens_comanda ic
-     JOIN produtos p ON p.id = ic.produto_id
+     LEFT JOIN produtos p ON p.id = ic.produto_id
      LEFT JOIN acompanhantes a ON a.id = ic.acompanhante_id
      WHERE ic.comanda_id = $1 AND ic.cancelado = false
      ORDER BY ic.created_at DESC`,
