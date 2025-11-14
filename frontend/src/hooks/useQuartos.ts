@@ -24,6 +24,13 @@ interface QuartoOcupado {
   status: string;
 }
 
+interface QuartoDisponivel {
+  numero: number;
+  nome: string;
+  ocupado: boolean;
+  disponivel: boolean;
+}
+
 export const useQuartos = () => {
   const queryClient = useQueryClient();
 
@@ -51,6 +58,15 @@ export const useQuartos = () => {
       const response = await api.get<ApiResponse<ConfiguracaoQuarto[]>>(
         '/quartos/configuracoes'
       );
+      return response.data.data || [];
+    },
+  });
+
+  // Buscar quartos disponíveis
+  const { data: quartosDisponiveis, isLoading: loadingDisponiveis } = useQuery({
+    queryKey: ['quartos-disponiveis'],
+    queryFn: async () => {
+      const response = await api.get<ApiResponse<QuartoDisponivel[]>>('/quartos/disponiveis');
       return response.data.data || [];
     },
   });
@@ -118,6 +134,8 @@ export const useQuartos = () => {
   return {
     configuracoes,
     loadingConfiguracoes,
+    quartosDisponiveis,
+    loadingDisponiveis,
     quartosOcupados,
     loadingOcupados,
     refetchOcupados,

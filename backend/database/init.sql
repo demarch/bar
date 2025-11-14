@@ -322,7 +322,8 @@ INSERT INTO configuracoes_sistema (chave, valor, tipo, descricao) VALUES
     ('nome_estabelecimento', 'Meu Bar', 'string', 'Nome do estabelecimento'),
     ('percentual_comissao_padrao', '40', 'number', 'Percentual de comissão padrão para acompanhantes'),
     ('tempo_maximo_quarto_horas', '4', 'number', 'Tempo máximo de ocupação de quarto em horas'),
-    ('permitir_comanda_negativa', 'false', 'boolean', 'Permitir que comandas fiquem com saldo negativo');
+    ('permitir_comanda_negativa', 'false', 'boolean', 'Permitir que comandas fiquem com saldo negativo'),
+    ('total_quartos', '10', 'number', 'Número total de quartos disponíveis no estabelecimento');
 
 -- Usuário admin padrão (senha: admin123)
 -- Hash gerado com bcrypt para 'admin123'

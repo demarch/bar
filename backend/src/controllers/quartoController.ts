@@ -17,6 +17,41 @@ export const listarConfiguracoesQuartos = asyncHandler(async (_req: AuthRequest,
   res.json(response);
 });
 
+// Listar quartos disponíveis
+export const listarQuartosDisponiveis = asyncHandler(async (_req: AuthRequest, res: Response) => {
+  // Buscar configuração do número total de quartos (padrão: 10)
+  const configResult = await pool.query(
+    `SELECT valor FROM configuracoes_sistema WHERE chave = 'total_quartos'`
+  );
+
+  const totalQuartos = configResult.rows.length > 0 ? parseInt(configResult.rows[0].valor) : 10;
+
+  // Buscar quartos ocupados
+  const ocupadosResult = await pool.query(
+    `SELECT DISTINCT numero_quarto FROM ocupacao_quartos WHERE status = 'ocupado'`
+  );
+
+  const quartosOcupados = ocupadosResult.rows.map(row => row.numero_quarto);
+
+  // Gerar lista de todos os quartos com status
+  const quartos = [];
+  for (let i = 1; i <= totalQuartos; i++) {
+    quartos.push({
+      numero: i,
+      nome: `Quarto ${i}`,
+      ocupado: quartosOcupados.includes(i),
+      disponivel: !quartosOcupados.includes(i),
+    });
+  }
+
+  const response: ApiResponse = {
+    success: true,
+    data: quartos,
+  };
+
+  res.json(response);
+});
+
 // Listar quartos ocupados
 export const listarQuartosOcupados = asyncHandler(async (_req: AuthRequest, res: Response) => {
   const result = await pool.query(`

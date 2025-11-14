@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   listarConfiguracoesQuartos,
+  listarQuartosDisponiveis,
   listarQuartosOcupados,
   ocuparQuarto,
   finalizarOcupacao,
@@ -16,6 +17,9 @@ router.use(authenticate);
 
 // GET /api/quartos/configuracoes - Listar configurações de quartos
 router.get('/configuracoes', listarConfiguracoesQuartos);
+
+// GET /api/quartos/disponiveis - Listar quartos disponíveis
+router.get('/disponiveis', listarQuartosDisponiveis);
 
 // GET /api/quartos/ocupados - Listar quartos ocupados
 router.get('/ocupados', listarQuartosOcupados);
