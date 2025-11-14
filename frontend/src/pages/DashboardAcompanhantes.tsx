@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Layout } from '../components/Layout';
 import {
   useAcompanhantesPresentes,
   useEstatisticasDia,
@@ -66,10 +67,17 @@ const DashboardAcompanhantes: React.FC = () => {
     );
   };
 
-  if (isLoading) return <div className="p-8">Carregando...</div>;
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="p-8">Carregando...</div>
+      </Layout>
+    );
+  }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <Layout>
+      <div className="p-6 max-w-7xl mx-auto">
       <h1 className="text-3xl font-bold mb-6">Dashboard de Acompanhantes</h1>
 
       {/* Estatísticas */}
@@ -220,7 +228,8 @@ const DashboardAcompanhantes: React.FC = () => {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </Layout>
   );
 };
 
