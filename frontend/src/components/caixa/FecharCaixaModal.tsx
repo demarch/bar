@@ -13,7 +13,6 @@ export const FecharCaixaModal: React.FC<FecharCaixaModalProps> = ({ isOpen, onCl
   const [valorFechamento, setValorFechamento] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [step, setStep] = useState<'validacao' | 'confirmacao'>('validacao');
 
   // Validar se pode fechar
   const podeFechar = !comandas || comandas.length === 0;
@@ -42,7 +41,7 @@ export const FecharCaixaModal: React.FC<FecharCaixaModalProps> = ({ isOpen, onCl
   if (!isOpen || !caixaAberto) return null;
 
   // Calcular totais
-  const valorAbertura = parseFloat(caixaAberto.valor_abertura || '0');
+  const valorAbertura = parseFloat(caixaAberto.valor_abertura.toString());
   const totalVendas = caixaAberto.total_vendas || 0;
   const totalComissoes = caixaAberto.total_comissoes || 0;
   const totalSangrias = caixaAberto.total_sangrias || 0;

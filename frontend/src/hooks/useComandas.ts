@@ -12,15 +12,15 @@ export const useComandas = () => {
     const socket = socketService.getSocket();
     if (!socket) return;
 
-    const handleComandaAtualizada = (data: Comanda) => {
+    const handleComandaAtualizada = () => {
       queryClient.invalidateQueries({ queryKey: ['comandas'] });
     };
 
-    const handleComandaCriada = (data: Comanda) => {
+    const handleComandaCriada = () => {
       queryClient.invalidateQueries({ queryKey: ['comandas'] });
     };
 
-    const handleComandaFechada = (data: Comanda) => {
+    const handleComandaFechada = () => {
       queryClient.invalidateQueries({ queryKey: ['comandas'] });
     };
 

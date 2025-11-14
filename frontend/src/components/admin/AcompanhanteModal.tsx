@@ -51,9 +51,9 @@ export const AcompanhanteModal: React.FC<AcompanhanteModalProps> = ({ acompanhan
 
       const data = {
         nome: formData.nome.trim(),
-        apelido: formData.apelido.trim() || null,
-        telefone: formData.telefone.trim() || null,
-        documento: formData.documento.trim() || null,
+        apelido: formData.apelido.trim() || undefined,
+        telefone: formData.telefone.trim() || undefined,
+        documento: formData.documento.trim() || undefined,
         percentual_comissao: comissao,
       };
 

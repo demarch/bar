@@ -70,7 +70,7 @@ export const Caixa: React.FC = () => {
   const totalVendas = caixaAberto.total_vendas || 0;
   const totalComissoes = caixaAberto.total_comissoes || 0;
   const totalSangrias = caixaAberto.total_sangrias || 0;
-  const saldoAtual = parseFloat(caixaAberto.valor_abertura || '0') + totalVendas - totalSangrias;
+  const saldoAtual = parseFloat(caixaAberto.valor_abertura.toString()) + totalVendas - totalSangrias;
   const lucroLiquido = totalVendas - totalComissoes;
 
   return (
@@ -84,7 +84,7 @@ export const Caixa: React.FC = () => {
               <div className="space-y-1 text-primary-100">
                 <p>
                   <span className="font-semibold">Operador:</span>{' '}
-                  {caixaAberto.usuario_nome || 'Desconhecido'}
+                  {caixaAberto.operador_nome || 'Desconhecido'}
                 </p>
                 <p>
                   <span className="font-semibold">Abertura:</span>{' '}
@@ -92,7 +92,7 @@ export const Caixa: React.FC = () => {
                 </p>
                 <p>
                   <span className="font-semibold">Valor Inicial:</span> R${' '}
-                  {parseFloat(caixaAberto.valor_abertura || '0').toFixed(2)}
+                  {parseFloat(caixaAberto.valor_abertura.toString()).toFixed(2)}
                 </p>
               </div>
             </div>
@@ -316,10 +316,10 @@ export const Caixa: React.FC = () => {
                       {comanda.cliente_nome && (
                         <span className="text-gray-700">{comanda.cliente_nome}</span>
                       )}
-                      {comanda.total_acompanhantes > 0 && (
+                      {(comanda.acompanhantes?.length || 0) > 0 && (
                         <span className="badge badge-warning">
-                          {comanda.total_acompanhantes}{' '}
-                          {comanda.total_acompanhantes === 1
+                          {comanda.acompanhantes?.length || 0}{' '}
+                          {(comanda.acompanhantes?.length || 0) === 1
                             ? 'acompanhante'
                             : 'acompanhantes'}
                         </span>

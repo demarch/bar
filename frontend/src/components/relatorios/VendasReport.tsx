@@ -149,7 +149,7 @@ export const VendasReport: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {data.vendas_por_produto.map((item, index) => (
+                      {data.vendas_por_produto.map((item) => (
                         <tr key={item.produto_id} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
