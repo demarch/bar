@@ -37,13 +37,40 @@ export const listarAcompanhantesAtivas = asyncHandler(async (_req: AuthRequest, 
 
 // Criar acompanhante
 export const criarAcompanhante = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const { nome, apelido, telefone, documento, percentual_comissao } = req.body;
+  const { nome, apelido, telefone, documento, percentual_comissao, tipo_acompanhante, numero_pulseira_fixa } = req.body;
+
+  // Validar tipo de acompanhante
+  const tipo = tipo_acompanhante || 'rotativa';
+
+  if (tipo !== 'fixa' && tipo !== 'rotativa') {
+    throw new AppError('Tipo de acompanhante inválido. Use "fixa" ou "rotativa"', 400);
+  }
+
+  // Se for fixa, validar pulseira
+  if (tipo === 'fixa') {
+    if (!numero_pulseira_fixa) {
+      throw new AppError('Acompanhante fixa deve ter um número de pulseira', 400);
+    }
+    if (numero_pulseira_fixa < 1 || numero_pulseira_fixa > 1000) {
+      throw new AppError('Número de pulseira deve estar entre 1 e 1000', 400);
+    }
+
+    // Verificar se a pulseira já está sendo usada
+    const pulseiraEmUso = await pool.query(
+      'SELECT id, nome FROM acompanhantes WHERE numero_pulseira_fixa = $1 AND tipo_acompanhante = $2',
+      [numero_pulseira_fixa, 'fixa']
+    );
+
+    if (pulseiraEmUso.rows.length > 0) {
+      throw new AppError(`Pulseira ${numero_pulseira_fixa} já está reservada para ${pulseiraEmUso.rows[0].nome}`, 400);
+    }
+  }
 
   const result = await pool.query(
-    `INSERT INTO acompanhantes (nome, apelido, telefone, documento, percentual_comissao)
-     VALUES ($1, $2, $3, $4, $5)
+    `INSERT INTO acompanhantes (nome, apelido, telefone, documento, percentual_comissao, tipo_acompanhante, numero_pulseira_fixa)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
      RETURNING *`,
-    [nome, apelido, telefone, documento, percentual_comissao || 40]
+    [nome, apelido, telefone, documento, percentual_comissao || 40, tipo, numero_pulseira_fixa || null]
   );
 
   const response: ApiResponse = {
@@ -58,19 +85,57 @@ export const criarAcompanhante = asyncHandler(async (req: AuthRequest, res: Resp
 // Atualizar acompanhante
 export const atualizarAcompanhante = asyncHandler(async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
-  const { nome, apelido, telefone, documento, percentual_comissao } = req.body;
+  const { nome, apelido, telefone, documento, percentual_comissao, tipo_acompanhante, numero_pulseira_fixa } = req.body;
+
+  // Buscar acompanhante atual
+  const acompanhanteAtual = await pool.query(
+    'SELECT * FROM acompanhantes WHERE id = $1',
+    [id]
+  );
+
+  if (acompanhanteAtual.rows.length === 0) {
+    throw new AppError('Acompanhante não encontrada', 404);
+  }
+
+  const tipo = tipo_acompanhante || acompanhanteAtual.rows[0].tipo_acompanhante;
+
+  // Validar tipo de acompanhante
+  if (tipo !== 'fixa' && tipo !== 'rotativa') {
+    throw new AppError('Tipo de acompanhante inválido. Use "fixa" ou "rotativa"', 400);
+  }
+
+  // Se for fixa, validar pulseira
+  let numeroPulseiraFinal = numero_pulseira_fixa;
+  if (tipo === 'fixa') {
+    if (!numero_pulseira_fixa) {
+      throw new AppError('Acompanhante fixa deve ter um número de pulseira', 400);
+    }
+    if (numero_pulseira_fixa < 1 || numero_pulseira_fixa > 1000) {
+      throw new AppError('Número de pulseira deve estar entre 1 e 1000', 400);
+    }
+
+    // Verificar se a pulseira já está sendo usada (exceto pela própria acompanhante)
+    const pulseiraEmUso = await pool.query(
+      'SELECT id, nome FROM acompanhantes WHERE numero_pulseira_fixa = $1 AND tipo_acompanhante = $2 AND id != $3',
+      [numero_pulseira_fixa, 'fixa', id]
+    );
+
+    if (pulseiraEmUso.rows.length > 0) {
+      throw new AppError(`Pulseira ${numero_pulseira_fixa} já está reservada para ${pulseiraEmUso.rows[0].nome}`, 400);
+    }
+  } else {
+    // Se mudou de fixa para rotativa, remover pulseira fixa
+    numeroPulseiraFinal = null;
+  }
 
   const result = await pool.query(
     `UPDATE acompanhantes
-     SET nome = $1, apelido = $2, telefone = $3, documento = $4, percentual_comissao = $5
-     WHERE id = $6
+     SET nome = $1, apelido = $2, telefone = $3, documento = $4, percentual_comissao = $5,
+         tipo_acompanhante = $6, numero_pulseira_fixa = $7
+     WHERE id = $8
      RETURNING *`,
-    [nome, apelido, telefone, documento, percentual_comissao, id]
+    [nome, apelido, telefone, documento, percentual_comissao, tipo, numeroPulseiraFinal, id]
   );
-
-  if (result.rows.length === 0) {
-    throw new AppError('Acompanhante não encontrada', 404);
-  }
 
   const response: ApiResponse = {
     success: true,
@@ -112,18 +177,45 @@ export const ativarAcompanhante = asyncHandler(async (req: AuthRequest, res: Res
     [id]
   );
 
-  const response: ApiResponse = {
-    success: true,
-    message: 'Acompanhante ativada para hoje',
-  };
+  // Atribuir pulseira usando a função do banco de dados
+  try {
+    const resultPulseira = await pool.query(
+      'SELECT atribuir_pulseira($1) as numero_pulseira',
+      [id]
+    );
 
-  res.json(response);
+    const numeroPulseira = resultPulseira.rows[0].numero_pulseira;
+
+    const response: ApiResponse = {
+      success: true,
+      message: `Acompanhante ativada para hoje com pulseira ${numeroPulseira}`,
+      data: {
+        numero_pulseira: numeroPulseira,
+      },
+    };
+
+    res.json(response);
+  } catch (error: any) {
+    // Se falhou ao atribuir pulseira, desfazer a ativação
+    await pool.query(
+      'DELETE FROM acompanhantes_ativas_dia WHERE acompanhante_id = $1 AND data = CURRENT_DATE',
+      [id]
+    );
+    throw new AppError(error.message || 'Erro ao atribuir pulseira', 400);
+  }
 });
 
 // Desativar acompanhante do dia
 export const desativarAcompanhante = asyncHandler(async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
 
+  // Devolver pulseira usando a função do banco de dados
+  await pool.query(
+    'SELECT devolver_pulseira($1)',
+    [id]
+  );
+
+  // Desativar
   await pool.query(
     'DELETE FROM acompanhantes_ativas_dia WHERE acompanhante_id = $1 AND data = CURRENT_DATE',
     [id]
@@ -131,7 +223,7 @@ export const desativarAcompanhante = asyncHandler(async (req: AuthRequest, res: 
 
   const response: ApiResponse = {
     success: true,
-    message: 'Acompanhante desativada do dia',
+    message: 'Acompanhante desativada do dia e pulseira devolvida',
   };
 
   res.json(response);
@@ -175,6 +267,78 @@ export const relatorioComissoes = asyncHandler(async (req: AuthRequest, res: Res
       total_comissoes: totalComissoes,
       total_itens: itensResult.rows.length,
     },
+  };
+
+  res.json(response);
+});
+
+// Listar pulseiras disponíveis
+export const listarPulseirasDisponiveis = asyncHandler(async (_req: AuthRequest, res: Response) => {
+  const result = await pool.query(
+    `SELECT * FROM vw_pulseiras_disponiveis ORDER BY numero`
+  );
+
+  const response: ApiResponse = {
+    success: true,
+    data: result.rows,
+  };
+
+  res.json(response);
+});
+
+// Listar pulseiras ativas hoje
+export const listarPulseirasAtivas = asyncHandler(async (_req: AuthRequest, res: Response) => {
+  const result = await pool.query(
+    `SELECT * FROM vw_pulseiras_ativas_hoje ORDER BY numero_pulseira`
+  );
+
+  const response: ApiResponse = {
+    success: true,
+    data: result.rows,
+  };
+
+  res.json(response);
+});
+
+// Buscar pulseira específica
+export const buscarPulseira = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { numero } = req.params;
+
+  if (parseInt(numero) < 1 || parseInt(numero) > 1000) {
+    throw new AppError('Número de pulseira deve estar entre 1 e 1000', 400);
+  }
+
+  const result = await pool.query(
+    `SELECT * FROM vw_pulseiras_disponiveis WHERE numero = $1`,
+    [numero]
+  );
+
+  if (result.rows.length === 0) {
+    throw new AppError('Pulseira não encontrada', 404);
+  }
+
+  const response: ApiResponse = {
+    success: true,
+    data: result.rows[0],
+  };
+
+  res.json(response);
+});
+
+// Estatísticas de pulseiras
+export const estatisticasPulseiras = asyncHandler(async (_req: AuthRequest, res: Response) => {
+  const result = await pool.query(`
+    SELECT
+      COUNT(*) FILTER (WHERE status = 'disponivel') as disponiveis,
+      COUNT(*) FILTER (WHERE status = 'reservada_fixa') as reservadas_fixas,
+      COUNT(*) FILTER (WHERE status = 'em_uso') as em_uso,
+      COUNT(*) as total
+    FROM vw_pulseiras_disponiveis
+  `);
+
+  const response: ApiResponse = {
+    success: true,
+    data: result.rows[0],
   };
 
   res.json(response);

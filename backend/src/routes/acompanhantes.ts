@@ -7,6 +7,10 @@ import {
   ativarAcompanhante,
   desativarAcompanhante,
   relatorioComissoes,
+  listarPulseirasDisponiveis,
+  listarPulseirasAtivas,
+  buscarPulseira,
+  estatisticasPulseiras,
 } from '../controllers/acompanhanteController';
 import { authenticate, authorize } from '../middlewares/auth';
 import { validate, schemas } from '../middlewares/validator';
@@ -21,6 +25,18 @@ router.get('/', listarAcompanhantes);
 
 // GET /api/acompanhantes/ativas - Listar acompanhantes ativas hoje
 router.get('/ativas', listarAcompanhantesAtivas);
+
+// GET /api/acompanhantes/pulseiras/disponiveis - Listar pulseiras disponíveis
+router.get('/pulseiras/disponiveis', listarPulseirasDisponiveis);
+
+// GET /api/acompanhantes/pulseiras/ativas - Listar pulseiras ativas hoje
+router.get('/pulseiras/ativas', listarPulseirasAtivas);
+
+// GET /api/acompanhantes/pulseiras/estatisticas - Estatísticas de pulseiras
+router.get('/pulseiras/estatisticas', estatisticasPulseiras);
+
+// GET /api/acompanhantes/pulseiras/:numero - Buscar pulseira específica
+router.get('/pulseiras/:numero', buscarPulseira);
 
 // POST /api/acompanhantes - Criar acompanhante (apenas admin)
 router.post('/', authorize('admin'), validate(schemas.createAcompanhante), criarAcompanhante);

@@ -90,6 +90,8 @@ export interface Categoria {
 // ACOMPANHANTE TYPES
 // ============================================
 
+export type TipoAcompanhante = 'fixa' | 'rotativa';
+
 export interface Acompanhante {
   id: number;
   nome: string;
@@ -97,7 +99,28 @@ export interface Acompanhante {
   telefone?: string;
   documento?: string;
   percentual_comissao: number;
+  tipo_acompanhante: TipoAcompanhante;
+  numero_pulseira_fixa?: number;
   ativa: boolean;
+}
+
+export type StatusPulseira = 'disponivel' | 'reservada_fixa' | 'em_uso';
+
+export interface PulseiraDisponivel {
+  numero: number;
+  status: StatusPulseira;
+  acompanhante_id?: number;
+  acompanhante_nome?: string;
+}
+
+export interface PulseiraAtivaHoje {
+  numero_pulseira: number;
+  acompanhante_id: number;
+  acompanhante_nome: string;
+  acompanhante_apelido?: string;
+  tipo_acompanhante: TipoAcompanhante;
+  hora_atribuicao: string;
+  hora_ativacao?: string;
 }
 
 // ============================================
