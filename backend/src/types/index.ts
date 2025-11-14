@@ -210,6 +210,23 @@ export interface ConfiguracaoQuarto {
   ordem: number;
 }
 
+export interface Quarto {
+  id: number;
+  numero: string;
+  descricao?: string;
+  ativo: boolean;
+  ordem: number;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface ServicoQuartoAcompanhante {
+  id: number;
+  item_comanda_id: number;
+  acompanhante_id: number;
+  created_at: Date;
+}
+
 // ============================================
 // DTOs (Data Transfer Objects)
 // ============================================
@@ -229,6 +246,26 @@ export interface AddItemComandaDTO {
   produto_id: number;
   quantidade: number;
   acompanhante_id?: number;
+}
+
+export interface AddServicoQuartoDTO {
+  comanda_id: number;
+  numero_quarto: string;
+  configuracao_quarto_id: number;
+  acompanhante_ids: number[];
+}
+
+export interface CreateQuartoDTO {
+  numero: string;
+  descricao?: string;
+  ordem?: number;
+}
+
+export interface UpdateQuartoDTO {
+  numero?: string;
+  descricao?: string;
+  ativo?: boolean;
+  ordem?: number;
 }
 
 export interface FinalizarOcupacaoQuartoDTO {

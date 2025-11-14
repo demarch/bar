@@ -222,17 +222,17 @@ export const relatorioRentabilidade = asyncHandler(async (req: AuthRequest, res:
   // Vendas por tipo de produto
   const vendasTipoResult = await pool.query(
     `SELECT
-      p.tipo,
-      SUM(ic.subtotal) as total,
+      COALESCE(p.tipo, ic.tipo_item) as tipo,
+      SUM(ic.valor_total) as total,
       SUM(ic.valor_comissao) as comissoes,
       COUNT(ic.id) as quantidade_itens
     FROM itens_comanda ic
-    JOIN produtos p ON p.id = ic.produto_id
+    LEFT JOIN produtos p ON p.id = ic.produto_id
     JOIN comandas c ON c.id = ic.comanda_id
     WHERE c.data_fechamento BETWEEN $1 AND $2
       AND c.status = 'fechada'
       AND ic.cancelado = false
-    GROUP BY p.tipo`,
+    GROUP BY COALESCE(p.tipo, ic.tipo_item)`,
     [data_inicio, data_fim]
   );
 

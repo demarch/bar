@@ -440,6 +440,124 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- ============================================
+-- Migration 006: Melhorias no serviço de quarto
+-- ============================================
+
+-- Tabela de quartos disponíveis
+CREATE TABLE IF NOT EXISTS quartos (
+    id SERIAL PRIMARY KEY,
+    numero VARCHAR(10) NOT NULL UNIQUE,
+    descricao VARCHAR(100),
+    ativo BOOLEAN DEFAULT true,
+    ordem INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabela de relacionamento serviço-acompanhantes
+CREATE TABLE IF NOT EXISTS servico_quarto_acompanhantes (
+    id SERIAL PRIMARY KEY,
+    item_comanda_id INTEGER REFERENCES itens_comanda(id) ON DELETE CASCADE,
+    acompanhante_id INTEGER REFERENCES acompanhantes(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Adicionar colunas em itens_comanda
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'itens_comanda' AND column_name = 'numero_quarto'
+    ) THEN
+        ALTER TABLE itens_comanda ADD COLUMN numero_quarto VARCHAR(10);
+        COMMENT ON COLUMN itens_comanda.numero_quarto IS 'Número do quarto utilizado no serviço';
+        RAISE NOTICE 'Campo numero_quarto adicionado à tabela itens_comanda';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'itens_comanda' AND column_name = 'hora_entrada'
+    ) THEN
+        ALTER TABLE itens_comanda ADD COLUMN hora_entrada TIMESTAMP;
+        COMMENT ON COLUMN itens_comanda.hora_entrada IS 'Horário de entrada no quarto (timezone: America/Sao_Paulo)';
+        RAISE NOTICE 'Campo hora_entrada adicionado à tabela itens_comanda';
+    END IF;
+END $$;
+
+-- Criar índices
+CREATE INDEX IF NOT EXISTS idx_quartos_ativo ON quartos(ativo);
+CREATE INDEX IF NOT EXISTS idx_servico_acomp_item ON servico_quarto_acompanhantes(item_comanda_id);
+CREATE INDEX IF NOT EXISTS idx_servico_acomp_acompanhante ON servico_quarto_acompanhantes(acompanhante_id);
+
+-- Função para obter horário de Brasília
+CREATE OR REPLACE FUNCTION get_brasilia_time()
+RETURNS TIMESTAMP AS $$
+BEGIN
+    RETURN CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo';
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger para updated_at em quartos
+DROP TRIGGER IF EXISTS update_quartos_updated_at ON quartos;
+CREATE TRIGGER update_quartos_updated_at
+    BEFORE UPDATE ON quartos
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- Inserir quartos exemplo
+INSERT INTO quartos (numero, descricao, ordem) VALUES
+    ('101', 'Quarto 101', 1),
+    ('102', 'Quarto 102', 2),
+    ('103', 'Quarto 103', 3),
+    ('104', 'Quarto 104', 4),
+    ('105', 'Quarto 105', 5),
+    ('VIP1', 'Quarto VIP 1', 10),
+    ('VIP2', 'Quarto VIP 2', 11)
+ON CONFLICT (numero) DO NOTHING;
+
+-- View para histórico de serviços de quarto
+CREATE OR REPLACE VIEW vw_historico_servicos_quarto AS
+SELECT
+    sqa.acompanhante_id,
+    a.nome as acompanhante_nome,
+    a.apelido as acompanhante_apelido,
+    ic.id as item_id,
+    ic.comanda_id,
+    c.numero as comanda_numero,
+    ic.numero_quarto,
+    ic.hora_entrada,
+    ic.created_at as data_lancamento,
+    ic.valor_total,
+    mc.id as movimento_caixa_id,
+    mc.data_abertura as caixa_abertura,
+    u.nome as usuario_nome
+FROM servico_quarto_acompanhantes sqa
+JOIN acompanhantes a ON a.id = sqa.acompanhante_id
+JOIN itens_comanda ic ON ic.id = sqa.item_comanda_id
+JOIN comandas c ON c.id = ic.comanda_id
+JOIN movimentos_caixa mc ON mc.id = c.movimento_caixa_id
+LEFT JOIN usuarios u ON u.id = ic.usuario_id
+WHERE ic.tipo_item = 'quarto' AND ic.cancelado = false
+ORDER BY ic.created_at DESC;
+
+-- ============================================
+-- Migration 007: Adiciona configuracao_quarto_id em itens_comanda
+-- ============================================
+
+ALTER TABLE itens_comanda
+ADD COLUMN IF NOT EXISTS configuracao_quarto_id INTEGER REFERENCES configuracao_quartos(id);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_itens_comanda_config_quarto') THEN
+        CREATE INDEX idx_itens_comanda_config_quarto ON itens_comanda(configuracao_quarto_id);
+        RAISE NOTICE 'Índice idx_itens_comanda_config_quarto criado';
+    ELSE
+        RAISE NOTICE 'Índice idx_itens_comanda_config_quarto já existe';
+    END IF;
+END $$;
+
 COMMIT;
 
 -- Verificar as alterações

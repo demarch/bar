@@ -6,6 +6,7 @@ import {
   adicionarItem,
   fecharComanda,
   cancelarItem,
+  adicionarServicoQuarto,
 } from '../controllers/comandaController';
 import { authenticate, authorize } from '../middlewares/auth';
 import { validate, schemas } from '../middlewares/validator';
@@ -26,6 +27,9 @@ router.get('/:numero', buscarComanda);
 
 // POST /api/comandas/itens - Adicionar item à comanda
 router.post('/itens', validate(schemas.addItemComanda), adicionarItem);
+
+// POST /api/comandas/servico-quarto - Adicionar serviço de quarto com múltiplas acompanhantes
+router.post('/servico-quarto', adicionarServicoQuarto);
 
 // PUT /api/comandas/:id/fechar - Fechar comanda (apenas caixa e admin)
 router.put('/:id/fechar', authorize('caixa', 'admin'), fecharComanda);
