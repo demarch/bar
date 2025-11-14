@@ -1,9 +1,11 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 import { pool } from '../config/database';
 import { generateToken, generateRefreshToken, verifyRefreshToken } from '../middlewares/auth';
-import { ApiResponse, User } from '../types';
+import { ApiResponse, User, AuthRequest } from '../types';
 import { asyncHandler, AppError } from '../middlewares/errorHandler';
+import { addToBlacklist } from '../services/tokenBlacklist';
 
 export const login = asyncHandler(async (req: Request, res: Response) => {
   const { login, senha } = req.body;
@@ -108,6 +110,38 @@ export const me = asyncHandler(async (req: Request, res: Response) => {
   const response: ApiResponse = {
     success: true,
     data: result.rows[0],
+  };
+
+  res.json(response);
+});
+
+export const logout = asyncHandler(async (req: Request, res: Response) => {
+  const authReq = req as AuthRequest;
+  const token = authReq.token;
+
+  if (!token) {
+    throw new AppError('Token não encontrado', 400);
+  }
+
+  // Decodificar o token para obter o tempo de expiração
+  const decoded = jwt.decode(token) as any;
+
+  if (!decoded || !decoded.exp) {
+    throw new AppError('Token inválido', 400);
+  }
+
+  // Calcular tempo restante até expiração (em segundos)
+  const now = Math.floor(Date.now() / 1000);
+  const expiresIn = decoded.exp - now;
+
+  // Adicionar token à blacklist
+  if (expiresIn > 0) {
+    await addToBlacklist(token, expiresIn);
+  }
+
+  const response: ApiResponse = {
+    success: true,
+    message: 'Logout realizado com sucesso',
   };
 
   res.json(response);
