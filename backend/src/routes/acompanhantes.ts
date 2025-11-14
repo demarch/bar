@@ -4,6 +4,7 @@ import {
   listarAcompanhantesAtivas,
   criarAcompanhante,
   atualizarAcompanhante,
+  excluirAcompanhante,
   ativarAcompanhante,
   desativarAcompanhante,
   relatorioComissoes,
@@ -57,6 +58,9 @@ router.post('/', authorize('admin'), validate(schemas.createAcompanhante), criar
 
 // PUT /api/acompanhantes/:id - Atualizar acompanhante (apenas admin)
 router.put('/:id', authorize('admin'), validate(schemas.createAcompanhante), atualizarAcompanhante);
+
+// DELETE /api/acompanhantes/:id - Excluir acompanhante (apenas admin)
+router.delete('/:id', authorize('admin'), excluirAcompanhante);
 
 // POST /api/acompanhantes/:id/ativar - Ativar acompanhante para o dia
 router.post('/:id/ativar', ativarAcompanhante);

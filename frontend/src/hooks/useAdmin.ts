@@ -154,6 +154,17 @@ export const useAdmin = () => {
     },
   });
 
+  const excluirAcompanhanteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await api.delete(`/acompanhantes/${id}`);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['acompanhantes-all'] });
+      queryClient.invalidateQueries({ queryKey: ['acompanhantes-ativas'] });
+    },
+  });
+
   const ativarAcompanhanteDiaMutation = useMutation({
     mutationFn: async (id: number) => {
       const response = await api.post(`/acompanhantes/${id}/ativar`);
@@ -247,6 +258,7 @@ export const useAdmin = () => {
     isLoadingAcompanhantes,
     criarAcompanhante: criarAcompanhanteMutation.mutateAsync,
     atualizarAcompanhante: atualizarAcompanhanteMutation.mutateAsync,
+    excluirAcompanhante: excluirAcompanhanteMutation.mutateAsync,
     ativarAcompanhanteDia: ativarAcompanhanteDiaMutation.mutateAsync,
     desativarAcompanhanteDia: desativarAcompanhanteDiaMutation.mutateAsync,
 
