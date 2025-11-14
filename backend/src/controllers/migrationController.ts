@@ -3,7 +3,7 @@ import { pool } from '../config/database';
 import { AuthRequest, ApiResponse } from '../types';
 import { asyncHandler } from '../middlewares/errorHandler';
 
-export const applyCommissionFixMigration = asyncHandler(async (req: AuthRequest, res: Response) => {
+export const applyCommissionFixMigration = asyncHandler(async (_req: AuthRequest, res: Response) => {
   const client = await pool.connect();
 
   try {

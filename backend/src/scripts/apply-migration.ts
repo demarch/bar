@@ -4,8 +4,6 @@
  */
 
 import { pool } from '../config/database';
-import * as fs from 'fs';
-import * as path from 'path';
 
 async function applyMigration() {
   const client = await pool.connect();
