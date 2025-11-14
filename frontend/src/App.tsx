@@ -11,6 +11,7 @@ import { Caixa } from './pages/Caixa';
 import { Quartos } from './pages/Quartos';
 import { Admin } from './pages/Admin';
 import { Relatorios } from './pages/Relatorios';
+import DashboardAcompanhantes from './pages/DashboardAcompanhantes';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -106,6 +107,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <Relatorios />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/acompanhantes"
+            element={
+              <ProtectedRoute>
+                <DashboardAcompanhantes />
               </ProtectedRoute>
             }
           />
