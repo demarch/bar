@@ -5,6 +5,7 @@ import { useProdutos, useCategorias } from '../hooks/useProdutos';
 import { useAcompanhantesAtivas } from '../hooks/useAcompanhantes';
 import { useCaixa } from '../hooks/useCaixa';
 import { ComandaDetalhada, Produto } from '../types';
+import { ServicoQuartoModal } from '../components/pdv/ServicoQuartoModal';
 
 export const PDV: React.FC = () => {
   const { comandas, buscarComanda, criarComanda, adicionarItem } = useComandas();
@@ -19,6 +20,7 @@ export const PDV: React.FC = () => {
   const [acompanhanteSelecionada, setAcompanhanteSelecionada] = useState<number | undefined>();
   const [quantidade, setQuantidade] = useState(1);
   const [mensagem, setMensagem] = useState('');
+  const [showServicoQuartoModal, setShowServicoQuartoModal] = useState(false);
 
   const { produtos } = useProdutos(categoriaSelecionada);
 
@@ -71,6 +73,16 @@ export const PDV: React.FC = () => {
       }
     } catch (error: any) {
       setMensagem(error.response?.data?.error || 'Erro ao adicionar item');
+    }
+  };
+
+  const handleServicoQuartoSuccess = async () => {
+    setMensagem('Serviço de quarto lançado com sucesso!');
+    if (comandaSelecionada) {
+      const comandaAtualizada = await buscarComanda(comandaSelecionada.numero);
+      if (comandaAtualizada) {
+        setComandaSelecionada(comandaAtualizada);
+      }
     }
   };
 
@@ -316,6 +328,29 @@ export const PDV: React.FC = () => {
                 </div>
               )}
 
+              {/* Botão de Serviço de Quarto */}
+              {!produtoSelecionado && (
+                <div className="card bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                      </svg>
+                      <div>
+                        <h4 className="font-bold text-purple-900">Serviço de Quarto</h4>
+                        <p className="text-xs text-purple-700">Lançar uso de quarto com acompanhantes</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setShowServicoQuartoModal(true)}
+                      className="btn-primary bg-purple-600 hover:bg-purple-700"
+                    >
+                      Lançar
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Itens da Comanda */}
               <div className="card">
                 <h3 className="font-bold mb-4">Itens ({comandaSelecionada.itens?.length || 0})</h3>
@@ -350,6 +385,16 @@ export const PDV: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Modal de Serviço de Quarto */}
+      {comandaSelecionada && (
+        <ServicoQuartoModal
+          isOpen={showServicoQuartoModal}
+          onClose={() => setShowServicoQuartoModal(false)}
+          comandaId={comandaSelecionada.id}
+          onSuccess={handleServicoQuartoSuccess}
+        />
+      )}
     </Layout>
   );
 };

@@ -1,5 +1,6 @@
 import React from 'react';
 import { useQuartos } from '../../hooks/useQuartos';
+import { QuartosSection } from './QuartosSection';
 
 export const ConfiguracoesTab: React.FC = () => {
   const { configuracoes } = useQuartos();
@@ -8,10 +9,13 @@ export const ConfiguracoesTab: React.FC = () => {
     <div>
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-800">Configurações do Sistema</h2>
-        <p className="text-gray-600 mt-1">Visualize as configurações gerais do sistema</p>
+        <p className="text-gray-600 mt-1">Gerencie quartos e configurações gerais do sistema</p>
       </div>
 
-      {/* Configurações de Quartos */}
+      {/* Quartos Disponíveis */}
+      <QuartosSection />
+
+      {/* Configurações de Tempo/Preço dos Quartos */}
       <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
         <div className="flex items-center mb-4">
           <svg className="w-6 h-6 text-primary-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">

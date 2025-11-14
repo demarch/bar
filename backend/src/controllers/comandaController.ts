@@ -259,3 +259,135 @@ export const cancelarItem = asyncHandler(async (req: AuthRequest, res: Response)
 
   res.json(response);
 });
+
+// ============================================
+// SERVIÇO DE QUARTO
+// ============================================
+
+// Adicionar serviço de quarto com múltiplas acompanhantes
+export const adicionarServicoQuarto = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { comanda_id, numero_quarto, configuracao_quarto_id, acompanhante_ids } = req.body;
+  const usuario_id = req.user!.id;
+
+  // Validações
+  if (!numero_quarto) {
+    throw new AppError('Número do quarto é obrigatório', 400);
+  }
+
+  if (!configuracao_quarto_id) {
+    throw new AppError('Configuração de tempo/preço é obrigatória', 400);
+  }
+
+  if (!acompanhante_ids || !Array.isArray(acompanhante_ids) || acompanhante_ids.length === 0) {
+    throw new AppError('É obrigatório selecionar pelo menos uma acompanhante', 400);
+  }
+
+  // Verificar se a comanda está aberta
+  const comandaResult = await pool.query(
+    'SELECT * FROM comandas WHERE id = $1 AND status = $2',
+    [comanda_id, 'aberta']
+  );
+
+  if (comandaResult.rows.length === 0) {
+    throw new AppError('Comanda não encontrada ou já foi fechada', 404);
+  }
+
+  // Verificar se o quarto existe e está ativo
+  const quartoResult = await pool.query(
+    'SELECT * FROM quartos WHERE numero = $1 AND ativo = true',
+    [numero_quarto]
+  );
+
+  if (quartoResult.rows.length === 0) {
+    throw new AppError('Quarto não encontrado ou inativo', 404);
+  }
+
+  // Buscar configuração de preço
+  const configResult = await pool.query(
+    'SELECT * FROM configuracao_quartos WHERE id = $1 AND ativo = true',
+    [configuracao_quarto_id]
+  );
+
+  if (configResult.rows.length === 0) {
+    throw new AppError('Configuração de tempo/preço não encontrada ou inativa', 404);
+  }
+
+  const configuracao = configResult.rows[0];
+  const valor_servico = parseFloat(configuracao.valor);
+
+  // Verificar se todas as acompanhantes existem e estão ativas
+  const acompanhantesResult = await pool.query(
+    'SELECT id, nome FROM acompanhantes WHERE id = ANY($1) AND ativa = true',
+    [acompanhante_ids]
+  );
+
+  if (acompanhantesResult.rows.length !== acompanhante_ids.length) {
+    throw new AppError('Uma ou mais acompanhantes não foram encontradas ou estão inativas', 404);
+  }
+
+  // Iniciar transação
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    // Obter horário de Brasília
+    const horaBrasiliaResult = await client.query('SELECT get_brasilia_time() as hora');
+    const hora_entrada = horaBrasiliaResult.rows[0].hora;
+
+    // Inserir item na comanda
+    // Nota: Não tem comissão para serviço de quarto, conforme requisito
+    const itemResult = await client.query(
+      `INSERT INTO itens_comanda
+       (comanda_id, produto_id, quantidade, valor_unitario, valor_total, valor_comissao,
+        tipo_item, numero_quarto, hora_entrada, usuario_id)
+       VALUES ($1, NULL, 1, $2, $2, 0, 'quarto', $3, $4, $5)
+       RETURNING *`,
+      [comanda_id, valor_servico, numero_quarto, hora_entrada, usuario_id]
+    );
+
+    const item = itemResult.rows[0];
+
+    // Inserir relacionamento com as acompanhantes
+    for (const acompanhante_id of acompanhante_ids) {
+      await client.query(
+        `INSERT INTO servico_quarto_acompanhantes
+         (item_comanda_id, acompanhante_id)
+         VALUES ($1, $2)`,
+        [item.id, acompanhante_id]
+      );
+    }
+
+    await client.query('COMMIT');
+
+    // Buscar dados completos do item com acompanhantes
+    const itemCompletoResult = await pool.query(
+      `SELECT
+         ic.*,
+         ARRAY_AGG(json_build_object(
+           'id', a.id,
+           'nome', a.nome,
+           'apelido', a.apelido
+         )) as acompanhantes
+       FROM itens_comanda ic
+       LEFT JOIN servico_quarto_acompanhantes sqa ON sqa.item_comanda_id = ic.id
+       LEFT JOIN acompanhantes a ON a.id = sqa.acompanhante_id
+       WHERE ic.id = $1
+       GROUP BY ic.id`,
+      [item.id]
+    );
+
+    const response: ApiResponse = {
+      success: true,
+      data: itemCompletoResult.rows[0],
+      message: `Serviço de quarto ${numero_quarto} lançado com sucesso`,
+    };
+
+    res.status(201).json(response);
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+});
