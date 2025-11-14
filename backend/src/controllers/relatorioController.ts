@@ -23,7 +23,7 @@ export const relatorioFluxoCaixa = asyncHandler(async (req: AuthRequest, res: Re
       total_sangrias,
       total_comissoes,
       observacoes
-    FROM caixas
+    FROM movimentos_caixa
     WHERE DATE(data_abertura) BETWEEN $1 AND $2
     ORDER BY data_abertura DESC`,
     [data_inicio, data_fim]
@@ -196,7 +196,7 @@ export const relatorioRentabilidade = asyncHandler(async (req: AuthRequest, res:
   const receitasResult = await pool.query(
     `SELECT
       SUM(total_vendas) as total_vendas
-    FROM caixas
+    FROM movimentos_caixa
     WHERE DATE(data_abertura) BETWEEN $1 AND $2 AND status = 'fechado'`,
     [data_inicio, data_fim]
   );
@@ -205,7 +205,7 @@ export const relatorioRentabilidade = asyncHandler(async (req: AuthRequest, res:
   const despesasResult = await pool.query(
     `SELECT
       SUM(total_comissoes) as total_comissoes
-    FROM caixas
+    FROM movimentos_caixa
     WHERE DATE(data_abertura) BETWEEN $1 AND $2 AND status = 'fechado'`,
     [data_inicio, data_fim]
   );
@@ -214,7 +214,7 @@ export const relatorioRentabilidade = asyncHandler(async (req: AuthRequest, res:
   const sangriasResult = await pool.query(
     `SELECT
       SUM(total_sangrias) as total_sangrias
-    FROM caixas
+    FROM movimentos_caixa
     WHERE DATE(data_abertura) BETWEEN $1 AND $2 AND status = 'fechado'`,
     [data_inicio, data_fim]
   );

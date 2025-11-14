@@ -67,10 +67,11 @@ export const Caixa: React.FC = () => {
   }
 
   // Calcular totais
-  const totalVendas = caixaAberto.total_vendas || 0;
-  const totalComissoes = caixaAberto.total_comissoes || 0;
-  const totalSangrias = caixaAberto.total_sangrias || 0;
-  const saldoAtual = parseFloat(caixaAberto.valor_abertura.toString()) + totalVendas - totalSangrias;
+  const totalVendas = parseFloat(caixaAberto.total_vendas?.toString() || '0');
+  const totalComissoes = parseFloat(caixaAberto.total_comissoes?.toString() || '0');
+  const totalSangrias = parseFloat(caixaAberto.total_sangrias?.toString() || '0');
+  const valorAbertura = parseFloat(caixaAberto.valor_abertura?.toString() || '0');
+  const saldoAtual = valorAbertura + totalVendas - totalSangrias;
   const lucroLiquido = totalVendas - totalComissoes;
 
   return (
@@ -92,7 +93,7 @@ export const Caixa: React.FC = () => {
                 </p>
                 <p>
                   <span className="font-semibold">Valor Inicial:</span> R${' '}
-                  {parseFloat(caixaAberto.valor_abertura.toString()).toFixed(2)}
+                  {valorAbertura.toFixed(2)}
                 </p>
               </div>
             </div>
@@ -337,7 +338,7 @@ export const Caixa: React.FC = () => {
                   <div className="flex items-center gap-4">
                     <div className="text-right">
                       <p className="text-2xl font-bold text-primary-600">
-                        R$ {parseFloat(comanda.total.toString()).toFixed(2)}
+                        R$ {parseFloat(comanda.total?.toString() || '0').toFixed(2)}
                       </p>
                     </div>
                     <button
