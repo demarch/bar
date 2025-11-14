@@ -35,7 +35,7 @@ export const ConfiguracoesTab: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {configuracoes.map((config, index) => {
+                {configuracoes.map((config) => {
                   const horas = Math.floor(config.minutos / 60);
                   const mins = config.minutos % 60;
                   const tempoFormatado = horas > 0

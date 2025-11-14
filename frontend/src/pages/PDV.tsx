@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Layout } from '../components/Layout';
 import { useComandas } from '../hooks/useComandas';
 import { useProdutos, useCategorias } from '../hooks/useProdutos';
 import { useAcompanhantesAtivas } from '../hooks/useAcompanhantes';
 import { useCaixa } from '../hooks/useCaixa';
-import { ComandaDetalhada, Produto, Categoria } from '../types';
+import { ComandaDetalhada, Produto } from '../types';
 
 export const PDV: React.FC = () => {
   const { comandas, buscarComanda, criarComanda, adicionarItem } = useComandas();

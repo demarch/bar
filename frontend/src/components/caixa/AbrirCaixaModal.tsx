@@ -25,7 +25,7 @@ export const AbrirCaixaModal: React.FC<AbrirCaixaModalProps> = ({ isOpen, onClos
 
     try {
       setLoading(true);
-      await abrirCaixa({ valor_abertura: valor });
+      await abrirCaixa(valor);
       onClose();
     } catch (err: any) {
       setError(err.response?.data?.error || 'Erro ao abrir caixa');
