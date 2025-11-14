@@ -541,6 +541,23 @@ LEFT JOIN usuarios u ON u.id = ic.usuario_id
 WHERE ic.tipo_item = 'quarto' AND ic.cancelado = false
 ORDER BY ic.created_at DESC;
 
+-- ============================================
+-- Migration 007: Adiciona configuracao_quarto_id em itens_comanda
+-- ============================================
+
+ALTER TABLE itens_comanda
+ADD COLUMN IF NOT EXISTS configuracao_quarto_id INTEGER REFERENCES configuracao_quartos(id);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_itens_comanda_config_quarto') THEN
+        CREATE INDEX idx_itens_comanda_config_quarto ON itens_comanda(configuracao_quarto_id);
+        RAISE NOTICE 'Índice idx_itens_comanda_config_quarto criado';
+    ELSE
+        RAISE NOTICE 'Índice idx_itens_comanda_config_quarto já existe';
+    END IF;
+END $$;
+
 COMMIT;
 
 -- Verificar as alterações

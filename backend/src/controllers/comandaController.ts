@@ -96,13 +96,22 @@ export const buscarComanda = asyncHandler(async (req: AuthRequest, res: Response
       p.nome as produto_nome,
       p.categoria_id,
       a.nome as acompanhante_nome,
+      cq.descricao as tempo_quarto,
       CASE
-        WHEN ic.tipo_item = 'quarto' THEN 'Serviço de Quarto ' || ic.numero_quarto
+        WHEN ic.tipo_item = 'quarto' THEN
+          'Quarto ' || ic.numero_quarto || ' - ' || COALESCE(cq.descricao, '') ||
+          ' - ' || (
+            SELECT string_agg(acomp.nome, ', ')
+            FROM servico_quarto_acompanhantes sqa
+            JOIN acompanhantes acomp ON acomp.id = sqa.acompanhante_id
+            WHERE sqa.item_comanda_id = ic.id
+          )
         ELSE p.nome
       END as produto_nome
      FROM itens_comanda ic
      LEFT JOIN produtos p ON p.id = ic.produto_id
      LEFT JOIN acompanhantes a ON a.id = ic.acompanhante_id
+     LEFT JOIN configuracao_quartos cq ON cq.id = ic.configuracao_quarto_id
      WHERE ic.comanda_id = $1 AND ic.cancelado = false
      ORDER BY ic.created_at DESC`,
     [comanda.id]
@@ -344,10 +353,10 @@ export const adicionarServicoQuarto = asyncHandler(async (req: AuthRequest, res:
     const itemResult = await client.query(
       `INSERT INTO itens_comanda
        (comanda_id, produto_id, quantidade, valor_unitario, valor_total, valor_comissao,
-        tipo_item, numero_quarto, hora_entrada, usuario_id)
-       VALUES ($1, NULL, 1, $2, $2, 0, 'quarto', $3, $4, $5)
+        tipo_item, numero_quarto, hora_entrada, configuracao_quarto_id, usuario_id)
+       VALUES ($1, NULL, 1, $2, $2, 0, 'quarto', $3, $4, $5, $6)
        RETURNING *`,
-      [comanda_id, valor_servico, numero_quarto, hora_entrada, usuario_id]
+      [comanda_id, valor_servico, numero_quarto, hora_entrada, configuracao_quarto_id, usuario_id]
     );
 
     const item = itemResult.rows[0];
