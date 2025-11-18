@@ -44,11 +44,6 @@ export const Quartos: React.FC = () => {
     setShowFinalizarModal(true);
   };
 
-  const handleCancelar = (id: number) => {
-    setQuartoSelecionado(id);
-    setShowCancelarModal(true);
-  };
-
   return (
     <Layout>
       <div className="space-y-6">
