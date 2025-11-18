@@ -9,7 +9,7 @@ export const addToBlacklist = async (token: string, expiresIn: number): Promise<
   try {
     // Armazenar no Redis com TTL igual ao tempo de expiração do token
     // Após expirar, o Redis remove automaticamente
-    await redis.setex(`blacklist:${token}`, expiresIn, '1');
+    await redis.setEx(`blacklist:${token}`, expiresIn, '1');
   } catch (error) {
     console.error('Erro ao adicionar token à blacklist:', error);
     throw new Error('Erro ao revogar token');
@@ -53,7 +53,7 @@ export const clearBlacklist = async (): Promise<void> => {
   try {
     const keys = await redis.keys('blacklist:*');
     if (keys.length > 0) {
-      await redis.del(...keys);
+      await redis.del(keys);
     }
   } catch (error) {
     console.error('Erro ao limpar blacklist:', error);

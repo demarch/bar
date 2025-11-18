@@ -5,7 +5,7 @@ import pool from '../config/database';
  * GET /api/admin/dashboard
  * Retorna estatísticas gerais para o dashboard administrativo
  */
-export const getDashboardStats = async (req: Request, res: Response): Promise<void> => {
+export const getDashboardStats = async (_req: Request, res: Response): Promise<void> => {
   try {
     const hoje = new Date();
     const primeiroDiaMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);

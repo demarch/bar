@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useQuartos } from '../../hooks/useQuartos';
 
 interface QuartosOcupadosProps {
@@ -7,16 +7,6 @@ interface QuartosOcupadosProps {
 
 export const QuartosOcupados: React.FC<QuartosOcupadosProps> = ({ onFinalizarClick }) => {
   const { quartosOcupados, loadingOcupados, configuracoes } = useQuartos();
-  const [tempoAtual, setTempoAtual] = useState(Date.now());
-
-  // Atualizar tempo a cada minuto
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTempoAtual(Date.now());
-    }, 60000); // 60 segundos
-
-    return () => clearInterval(interval);
-  }, []);
 
   const calcularPrevisaoValor = (minutosDecorridos: number): number => {
     if (!configuracoes || configuracoes.length === 0) return 0;
