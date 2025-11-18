@@ -7,9 +7,13 @@ import http from 'http';
 import { Server as SocketServer } from 'socket.io';
 import rateLimit from 'express-rate-limit';
 import jwt from 'jsonwebtoken';
+import morgan from 'morgan';
 
 // Config
 dotenv.config();
+
+// Logger
+import logger from './config/logger';
 
 // Database
 import { pool } from './config/database';
@@ -17,6 +21,7 @@ import { connectRedis } from './config/redis';
 
 // Middlewares
 import { errorHandler } from './middlewares/errorHandler';
+import { sanitizeMongoData, sanitizeInputs } from './middlewares/sanitize';
 
 // Routes
 import authRoutes from './routes/auth';
@@ -30,6 +35,7 @@ import usuarioRoutes from './routes/usuarios';
 import relatorioRoutes from './routes/relatorios';
 import migrationRoutes from './routes/migrationRoutes';
 import dashboardRoutes from './routes/dashboard';
+import healthRoutes from './routes/health';
 
 // Initialize Express
 const app = express();
@@ -51,6 +57,18 @@ const limiter = rateLimit({
   message: 'Muitas requisições deste IP, tente novamente mais tarde.',
 });
 
+// HTTP Request Logging (Morgan + Winston)
+const morganFormat = process.env.NODE_ENV === 'production' ? 'combined' : 'dev';
+app.use(
+  morgan(morganFormat, {
+    stream: {
+      write: (message: string) => {
+        logger.http(message.trim());
+      },
+    },
+  })
+);
+
 // Middlewares
 app.use(helmet());
 app.use(cors({
@@ -60,12 +78,15 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+// Sanitização de inputs (previne XSS, NoSQL injection)
+app.use(sanitizeMongoData);
+app.use(sanitizeInputs);
+
 app.use('/api/', limiter);
 
-// Health check
-app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
+// Health check routes (sem rate limit)
+app.use('/health', healthRoutes);
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -116,43 +137,43 @@ io.use((socket, next) => {
 
 io.on('connection', (socket) => {
   const user = socket.data.user as SocketUser;
-  console.log('✅ Cliente conectado:', socket.id, '| Usuário:', user.login);
+  logger.info(`✅ WebSocket: Cliente conectado - Socket: ${socket.id} | Usuário: ${user.login}`);
 
   // Juntar sala de comandas abertas
   socket.join('comandas-abertas');
 
   // Escutar atualização de comanda
   socket.on('comanda:atualizada', (data) => {
-    console.log('📝 Comanda atualizada:', data);
+    logger.debug('📝 WebSocket: Comanda atualizada', { data });
     socket.broadcast.to('comandas-abertas').emit('comanda:atualizada', data);
   });
 
   // Escutar nova comanda
   socket.on('comanda:criada', (data) => {
-    console.log('🆕 Nova comanda:', data);
+    logger.debug('🆕 WebSocket: Nova comanda', { data });
     socket.broadcast.to('comandas-abertas').emit('comanda:criada', data);
   });
 
   // Escutar comanda fechada
   socket.on('comanda:fechada', (data) => {
-    console.log('✔️ Comanda fechada:', data);
+    logger.debug('✔️ WebSocket: Comanda fechada', { data });
     socket.broadcast.to('comandas-abertas').emit('comanda:fechada', data);
   });
 
   // Escutar atualização de quarto
   socket.on('quarto:atualizado', (data) => {
-    console.log('🚪 Quarto atualizado:', data);
+    logger.debug('🚪 WebSocket: Quarto atualizado', { data });
     socket.broadcast.emit('quarto:atualizado', data);
   });
 
   // Escutar atualização de caixa
   socket.on('caixa:atualizado', (data) => {
-    console.log('💰 Caixa atualizado:', data);
+    logger.debug('💰 WebSocket: Caixa atualizado', { data });
     socket.broadcast.emit('caixa:atualizado', data);
   });
 
   socket.on('disconnect', () => {
-    console.log('❌ Cliente desconectado:', socket.id);
+    logger.info(`❌ WebSocket: Cliente desconectado - Socket: ${socket.id}`);
   });
 });
 
@@ -169,35 +190,35 @@ const startServer = async () => {
   try {
     // Test database connection
     await pool.query('SELECT NOW()');
-    console.log('✅ Conexão com PostgreSQL estabelecida');
+    logger.info('✅ Conexão com PostgreSQL estabelecida');
 
     // Connect to Redis
     await connectRedis();
 
     // Start server
     server.listen(PORT, () => {
-      console.log('');
-      console.log('🚀 ========================================');
-      console.log(`🚀 Servidor rodando na porta ${PORT}`);
-      console.log(`🚀 Ambiente: ${process.env.NODE_ENV || 'development'}`);
-      console.log('🚀 ========================================');
-      console.log('');
+      logger.info('');
+      logger.info('🚀 ========================================');
+      logger.info(`🚀 Servidor rodando na porta ${PORT}`);
+      logger.info(`🚀 Ambiente: ${process.env.NODE_ENV || 'development'}`);
+      logger.info('🚀 ========================================');
+      logger.info('');
     });
   } catch (error) {
-    console.error('❌ Erro ao iniciar servidor:', error);
+    logger.error('❌ Erro ao iniciar servidor:', error);
     process.exit(1);
   }
 };
 
 // Handle shutdown gracefully
 process.on('SIGTERM', async () => {
-  console.log('👋 SIGTERM recebido. Encerrando graciosamente...');
+  logger.info('👋 SIGTERM recebido. Encerrando graciosamente...');
   await pool.end();
   process.exit(0);
 });
 
 process.on('SIGINT', async () => {
-  console.log('👋 SIGINT recebido. Encerrando graciosamente...');
+  logger.info('👋 SIGINT recebido. Encerrando graciosamente...');
   await pool.end();
   process.exit(0);
 });

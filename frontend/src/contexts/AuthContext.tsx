@@ -4,17 +4,15 @@ import api from '../services/api';
 
 interface AuthState {
   user: User | null;
-  token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (login: string, senha: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   loadUser: () => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
-  token: null,
   isAuthenticated: false,
   isLoading: true,
 
@@ -25,37 +23,41 @@ export const useAuthStore = create<AuthState>((set) => ({
         { login, senha }
       );
 
-      const { user, token, refreshToken } = response.data.data;
+      const { user } = response.data.data;
 
-      localStorage.setItem('token', token);
-      localStorage.setItem('refreshToken', refreshToken);
+      // Salvar apenas o user no localStorage (tokens ficam em httpOnly cookies)
       localStorage.setItem('user', JSON.stringify(user));
 
-      set({ user, token, isAuthenticated: true, isLoading: false });
+      set({ user, isAuthenticated: true, isLoading: false });
     } catch (error) {
       console.error('Erro no login:', error);
       throw error;
     }
   },
 
-  logout: () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('user');
-
-    set({ user: null, token: null, isAuthenticated: false });
+  logout: async () => {
+    try {
+      // Chamar endpoint de logout para limpar cookies no servidor
+      await api.post('/auth/logout');
+    } catch (error) {
+      console.error('Erro no logout:', error);
+    } finally {
+      // Limpar user do localStorage
+      localStorage.removeItem('user');
+      set({ user: null, isAuthenticated: false });
+    }
   },
 
   loadUser: () => {
-    const token = localStorage.getItem('token');
     const userStr = localStorage.getItem('user');
 
-    if (token && userStr) {
+    if (userStr) {
       try {
         const user = JSON.parse(userStr);
-        set({ user, token, isAuthenticated: true, isLoading: false });
+        set({ user, isAuthenticated: true, isLoading: false });
       } catch (error) {
         console.error('Erro ao carregar usuário:', error);
+        localStorage.removeItem('user');
         set({ isLoading: false });
       }
     } else {

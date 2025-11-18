@@ -14,34 +14,42 @@ export interface JwtPayload {
 // Middleware para verificar se o usuário está autenticado
 export const authenticate = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const authHeader = req.headers.authorization;
+    // Tentar pegar token do cookie primeiro, depois do header Authorization
+    let token: string | undefined = req.cookies?.token;
 
-    if (!authHeader) {
-      res.status(401).json({
-        success: false,
-        error: 'Token não fornecido'
-      });
-      return;
-    }
+    // Se não tiver cookie, tentar header Authorization (compatibilidade)
+    if (!token) {
+      const authHeader = req.headers.authorization;
 
-    const parts = authHeader.split(' ');
+      if (!authHeader) {
+        res.status(401).json({
+          success: false,
+          error: 'Token não fornecido'
+        });
+        return;
+      }
 
-    if (parts.length !== 2) {
-      res.status(401).json({
-        success: false,
-        error: 'Erro no token'
-      });
-      return;
-    }
+      const parts = authHeader.split(' ');
 
-    const [scheme, token] = parts;
+      if (parts.length !== 2) {
+        res.status(401).json({
+          success: false,
+          error: 'Erro no token'
+        });
+        return;
+      }
 
-    if (!/^Bearer$/i.test(scheme)) {
-      res.status(401).json({
-        success: false,
-        error: 'Token mal formatado'
-      });
-      return;
+      const [scheme, tokenFromHeader] = parts;
+
+      if (!/^Bearer$/i.test(scheme)) {
+        res.status(401).json({
+          success: false,
+          error: 'Token mal formatado'
+        });
+        return;
+      }
+
+      token = tokenFromHeader;
     }
 
     // Verificar se o token está na blacklist
