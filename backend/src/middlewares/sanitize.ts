@@ -11,7 +11,7 @@ import mongoSanitize from 'express-mongo-sanitize';
 // Middleware para sanitizar dados do MongoDB (remove $, ., etc)
 export const sanitizeMongoData = mongoSanitize({
   replaceWith: '_',
-  onSanitize: ({ req, key }) => {
+  onSanitize: ({ req, key }: { req: Request, key: string }) => {
     console.warn(`⚠️ Tentativa de injection detectada em ${req.path}:`, key);
   },
 });
