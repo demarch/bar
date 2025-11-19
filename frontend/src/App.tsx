@@ -47,9 +47,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 function App() {
-  const loadUser = useAuthStore((state) => state.loadUser);
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const token = useAuthStore((state) => state.token);
+  const { loadUser, isAuthenticated, token } = useAuthStore();
 
   useEffect(() => {
     loadUser();
