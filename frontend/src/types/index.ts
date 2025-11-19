@@ -14,8 +14,7 @@ export interface User {
 
 export interface AuthResponse {
   user: User;
-  token: string;
-  refreshToken: string;
+  // Tokens agora são enviados via httpOnly cookies (não no body)
 }
 
 // ============================================

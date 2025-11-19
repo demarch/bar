@@ -7,15 +7,13 @@ export const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // Importante para enviar cookies
 });
 
-// Request interceptor para adicionar token
+// Request interceptor (não precisa mais adicionar token manualmente)
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
-    if (token && config.headers) {
-      config.headers['Authorization'] = `Bearer ${token}`;
-    }
+    // Cookies são enviados automaticamente com withCredentials: true
     return config;
   },
   (error) => {
@@ -34,26 +32,17 @@ api.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        const refreshToken = localStorage.getItem('refreshToken');
-        if (!refreshToken) {
-          throw new Error('No refresh token');
-        }
+        // Tentar renovar token (refresh token está no cookie)
+        await axios.post(
+          `${API_URL}/api/auth/refresh`,
+          {},
+          { withCredentials: true }
+        );
 
-        const response = await axios.post(`${API_URL}/api/auth/refresh`, {
-          refreshToken,
-        });
-
-        const { token } = response.data.data;
-        localStorage.setItem('token', token);
-
-        if (originalRequest.headers) {
-          originalRequest.headers['Authorization'] = `Bearer ${token}`;
-        }
+        // Cookie atualizado automaticamente, tentar request novamente
         return api(originalRequest);
       } catch (err) {
-        // Limpar storage e redirecionar para login
-        localStorage.removeItem('token');
-        localStorage.removeItem('refreshToken');
+        // Limpar user do storage e redirecionar para login
         localStorage.removeItem('user');
         window.location.href = '/login';
         return Promise.reject(err);

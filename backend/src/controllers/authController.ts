@@ -39,15 +39,30 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   const token = generateToken(tokenPayload);
   const refreshToken = generateRefreshToken(tokenPayload);
 
-  // Retornar dados do usuário e tokens (sem a senha)
+  // Configurar cookies httpOnly
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  res.cookie('token', token, {
+    httpOnly: true,
+    secure: isProduction, // true em produção (HTTPS)
+    sameSite: 'strict',
+    maxAge: 60 * 60 * 1000, // 1 hora
+  });
+
+  res.cookie('refreshToken', refreshToken, {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: 'strict',
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 dias
+  });
+
+  // Retornar dados do usuário (sem a senha e sem tokens no body)
   const { senha: _, ...userWithoutPassword } = user;
 
   const response: ApiResponse = {
     success: true,
     data: {
       user: userWithoutPassword,
-      token,
-      refreshToken,
     },
     message: 'Login realizado com sucesso',
   };
@@ -56,7 +71,8 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const refresh = asyncHandler(async (req: Request, res: Response) => {
-  const { refreshToken } = req.body;
+  // Tentar pegar refresh token do cookie ou do body (para compatibilidade)
+  const refreshToken = req.cookies.refreshToken || req.body.refreshToken;
 
   if (!refreshToken) {
     throw new AppError('Refresh token não fornecido', 401);
@@ -85,9 +101,19 @@ export const refresh = asyncHandler(async (req: Request, res: Response) => {
     tipo: decoded.tipo,
   });
 
+  // Configurar cookie httpOnly
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  res.cookie('token', newToken, {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: 'strict',
+    maxAge: 60 * 60 * 1000, // 1 hora
+  });
+
   const response: ApiResponse = {
     success: true,
-    data: { token: newToken },
+    data: {},
     message: 'Token renovado com sucesso',
   };
 
@@ -119,25 +145,25 @@ export const logout = asyncHandler(async (req: Request, res: Response) => {
   const authReq = req as AuthRequest;
   const token = authReq.token;
 
-  if (!token) {
-    throw new AppError('Token não encontrado', 400);
+  if (token) {
+    // Decodificar o token para obter o tempo de expiração
+    const decoded = jwt.decode(token) as any;
+
+    if (decoded && decoded.exp) {
+      // Calcular tempo restante até expiração (em segundos)
+      const now = Math.floor(Date.now() / 1000);
+      const expiresIn = decoded.exp - now;
+
+      // Adicionar token à blacklist
+      if (expiresIn > 0) {
+        await addToBlacklist(token, expiresIn);
+      }
+    }
   }
 
-  // Decodificar o token para obter o tempo de expiração
-  const decoded = jwt.decode(token) as any;
-
-  if (!decoded || !decoded.exp) {
-    throw new AppError('Token inválido', 400);
-  }
-
-  // Calcular tempo restante até expiração (em segundos)
-  const now = Math.floor(Date.now() / 1000);
-  const expiresIn = decoded.exp - now;
-
-  // Adicionar token à blacklist
-  if (expiresIn > 0) {
-    await addToBlacklist(token, expiresIn);
-  }
+  // Limpar cookies
+  res.clearCookie('token');
+  res.clearCookie('refreshToken');
 
   const response: ApiResponse = {
     success: true,
