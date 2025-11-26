@@ -33,11 +33,11 @@ export const getDashboardStats = async (_req: Request, res: Response): Promise<v
     const produtosMaisVendidosResult = await pool.query(
       `SELECT
          p.nome as produto_nome,
-         COUNT(ci.id) as quantidade,
-         SUM(ci.preco_unitario * ci.quantidade) as total_vendas
-       FROM comanda_itens ci
-       INNER JOIN produtos p ON ci.produto_id = p.id
-       INNER JOIN comandas c ON ci.comanda_id = c.id
+         COUNT(ic.id) as quantidade,
+         SUM(ic.valor_unitario * ic.quantidade) as total_vendas
+       FROM itens_comanda ic
+       INNER JOIN produtos p ON ic.produto_id = p.id
+       INNER JOIN comandas c ON ic.comanda_id = c.id
        WHERE c.data_abertura >= $1
        GROUP BY p.id, p.nome
        ORDER BY quantidade DESC
@@ -45,18 +45,18 @@ export const getDashboardStats = async (_req: Request, res: Response): Promise<v
       [inicioSemana]
     );
 
-    // Comissões pendentes
+    // Comissões pendentes (da tabela acompanhantes_ativas_dia)
     const comissoesPendentesResult = await pool.query(
-      `SELECT COALESCE(SUM(valor_comissao), 0) as comissoes_pendentes
-       FROM comissao_periodos
-       WHERE pago = false`
+      `SELECT COALESCE(SUM(valor_comissoes_periodo), 0) as comissoes_pendentes
+       FROM acompanhantes_ativas_dia
+       WHERE status_periodo = 'encerrada_pendente'`
     );
 
     // Quartos ocupados no momento
     const quartosOcupadosResult = await pool.query(
       `SELECT COUNT(*) as quartos_ocupados
-       FROM quarto_ocupacoes
-       WHERE fim_ocupacao IS NULL`
+       FROM ocupacao_quartos
+       WHERE status = 'ocupado'`
     );
 
     // Vendas por dia (últimos 7 dias) para o gráfico
