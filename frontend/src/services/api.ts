@@ -33,17 +33,24 @@ api.interceptors.response.use(
 
       try {
         // Tentar renovar token (refresh token está no cookie)
-        await axios.post(
+        const refreshResponse = await axios.post<{ success: boolean; data: { token: string } }>(
           `${API_URL}/api/auth/refresh`,
           {},
           { withCredentials: true }
         );
+
+        // Atualizar token no sessionStorage para WebSocket
+        const newToken = refreshResponse.data.data?.token;
+        if (newToken) {
+          sessionStorage.setItem('wsToken', newToken);
+        }
 
         // Cookie atualizado automaticamente, tentar request novamente
         return api(originalRequest);
       } catch (err) {
         // Limpar user do storage e redirecionar para login
         localStorage.removeItem('user');
+        sessionStorage.removeItem('wsToken');
         window.location.href = '/login';
         return Promise.reject(err);
       }

@@ -56,13 +56,15 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 dias
   });
 
-  // Retornar dados do usuário (sem a senha e sem tokens no body)
+  // Retornar dados do usuário (sem a senha)
+  // O token também é retornado no body para uso no WebSocket (que não tem acesso a cookies)
   const { senha: _, ...userWithoutPassword } = user;
 
   const response: ApiResponse = {
     success: true,
     data: {
       user: userWithoutPassword,
+      token, // Token para autenticação WebSocket
     },
     message: 'Login realizado com sucesso',
   };
@@ -113,7 +115,9 @@ export const refresh = asyncHandler(async (req: Request, res: Response) => {
 
   const response: ApiResponse = {
     success: true,
-    data: {},
+    data: {
+      token: newToken, // Token para atualizar autenticação WebSocket
+    },
     message: 'Token renovado com sucesso',
   };
 
