@@ -2,7 +2,7 @@
  * Página de Listagem e Gerenciamento de NF-e
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   useNfeLista,
   useCancelarNfe,

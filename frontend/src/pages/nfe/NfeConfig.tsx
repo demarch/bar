@@ -3,7 +3,7 @@
  * Configuração do emitente, certificado digital e parâmetros
  */
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import {
   useNfeConfiguracao,
@@ -33,7 +33,7 @@ export default function NfeConfig() {
   const [certificadoSenha, setCertificadoSenha] = useState('');
 
   const { data: config, isLoading: configLoading } = useNfeConfiguracao();
-  const { data: certificadoInfo, isLoading: certLoading } = useValidarCertificado();
+  const { data: certificadoInfo } = useValidarCertificado();
   const { data: statusServico } = useNfeStatusServico();
 
   const salvarMutation = useSalvarNfeConfiguracao();

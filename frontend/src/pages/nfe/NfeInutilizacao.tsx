@@ -2,7 +2,6 @@
  * Página de Inutilização de Numeração de NF-e
  */
 
-import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useInutilizarNumeracao, useNfeConfiguracao } from '../../hooks/useNfe';
 

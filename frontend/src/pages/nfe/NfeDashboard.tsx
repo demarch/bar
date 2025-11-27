@@ -3,7 +3,6 @@
  * Mostra status do serviço, contingência e progresso de homologação
  */
 
-import React from 'react';
 import {
   useNfeStatusServico,
   useNfeContingenciaStatus,
@@ -266,7 +265,7 @@ export default function NfeDashboard() {
                 {Object.entries(storageStats.porStatus || {}).map(([status, count]) => (
                   <div key={status} className="flex justify-between">
                     <span>{status}:</span>
-                    <span className="font-medium">{count}</span>
+                    <span className="font-medium">{String(count)}</span>
                   </div>
                 ))}
               </div>
@@ -279,7 +278,7 @@ export default function NfeDashboard() {
               <div className="flex gap-4">
                 {Object.entries(storageStats.porAno).map(([ano, count]) => (
                   <div key={ano} className="px-3 py-1 bg-blue-100 rounded-full text-sm">
-                    {ano}: <span className="font-medium">{count}</span>
+                    {ano}: <span className="font-medium">{String(count)}</span>
                   </div>
                 ))}
               </div>
