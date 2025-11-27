@@ -16,18 +16,18 @@ export const QuartosOcupados: React.FC<QuartosOcupadosProps> = ({ onFinalizarCli
 
     // Se o tempo decorrido for menor que o primeiro intervalo
     if (minutosDecorridos < configOrdenada[0].minutos) {
-      return configOrdenada[0].valor;
+      return parseFloat(configOrdenada[0].valor.toString());
     }
 
     // Encontrar a faixa apropriada
     for (let i = configOrdenada.length - 1; i >= 0; i--) {
       if (minutosDecorridos >= configOrdenada[i].minutos) {
-        return configOrdenada[i].valor;
+        return parseFloat(configOrdenada[i].valor.toString());
       }
     }
 
     // Se ultrapassar o tempo máximo, usar o valor mais alto
-    return configOrdenada[configOrdenada.length - 1].valor;
+    return parseFloat(configOrdenada[configOrdenada.length - 1].valor.toString());
   };
 
   const formatarTempo = (minutosDecorridos: number): string => {
