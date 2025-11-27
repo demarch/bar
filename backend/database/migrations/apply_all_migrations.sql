@@ -558,6 +558,161 @@ BEGIN
     END IF;
 END $$;
 
+-- ============================================
+-- Migration 008: Serviço de Tempo Livre
+-- ============================================
+
+DO $$
+BEGIN
+    -- Adicionar coluna tempo_livre
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'itens_comanda' AND column_name = 'tempo_livre'
+    ) THEN
+        ALTER TABLE itens_comanda ADD COLUMN tempo_livre BOOLEAN DEFAULT false;
+        COMMENT ON COLUMN itens_comanda.tempo_livre IS 'Indica se é um serviço de quarto com tempo livre (sem tempo pré-definido)';
+        RAISE NOTICE 'Campo tempo_livre adicionado à tabela itens_comanda';
+    END IF;
+
+    -- Adicionar coluna hora_saida
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'itens_comanda' AND column_name = 'hora_saida'
+    ) THEN
+        ALTER TABLE itens_comanda ADD COLUMN hora_saida TIMESTAMP;
+        COMMENT ON COLUMN itens_comanda.hora_saida IS 'Horário de finalização do serviço de quarto (timezone: America/Sao_Paulo)';
+        RAISE NOTICE 'Campo hora_saida adicionado à tabela itens_comanda';
+    END IF;
+
+    -- Adicionar coluna valor_sugerido
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'itens_comanda' AND column_name = 'valor_sugerido'
+    ) THEN
+        ALTER TABLE itens_comanda ADD COLUMN valor_sugerido DECIMAL(10,2);
+        COMMENT ON COLUMN itens_comanda.valor_sugerido IS 'Valor sugerido pelo sistema baseado no tempo decorrido';
+        RAISE NOTICE 'Campo valor_sugerido adicionado à tabela itens_comanda';
+    END IF;
+
+    -- Adicionar coluna status_tempo_livre
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'itens_comanda' AND column_name = 'status_tempo_livre'
+    ) THEN
+        ALTER TABLE itens_comanda ADD COLUMN status_tempo_livre VARCHAR(30) DEFAULT NULL
+        CHECK (status_tempo_livre IS NULL OR status_tempo_livre IN ('em_andamento', 'aguardando_confirmacao', 'finalizado'));
+        COMMENT ON COLUMN itens_comanda.status_tempo_livre IS 'Status do serviço de tempo livre: em_andamento, aguardando_confirmacao, finalizado';
+        RAISE NOTICE 'Campo status_tempo_livre adicionado à tabela itens_comanda';
+    END IF;
+
+    -- Adicionar coluna minutos_utilizados
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'itens_comanda' AND column_name = 'minutos_utilizados'
+    ) THEN
+        ALTER TABLE itens_comanda ADD COLUMN minutos_utilizados INTEGER;
+        COMMENT ON COLUMN itens_comanda.minutos_utilizados IS 'Total de minutos utilizados no serviço de tempo livre';
+        RAISE NOTICE 'Campo minutos_utilizados adicionado à tabela itens_comanda';
+    END IF;
+END $$;
+
+-- Criar índice para busca de serviços em andamento
+CREATE INDEX IF NOT EXISTS idx_itens_comanda_tempo_livre
+ON itens_comanda(tempo_livre, status_tempo_livre)
+WHERE tempo_livre = true;
+
+-- Função para calcular valor do tempo livre com tolerância de 10 minutos
+CREATE OR REPLACE FUNCTION calcular_valor_tempo_livre(minutos_decorridos INTEGER)
+RETURNS TABLE(
+    configuracao_id INTEGER,
+    descricao VARCHAR(50),
+    minutos_configuracao INTEGER,
+    valor DECIMAL(10,2)
+) AS $$
+DECLARE
+    tolerancia INTEGER := 10;
+BEGIN
+    RETURN QUERY
+    SELECT
+        cq.id,
+        cq.descricao,
+        cq.minutos,
+        cq.valor
+    FROM configuracao_quartos cq
+    WHERE cq.ativo = true
+    AND cq.minutos >= (
+        SELECT COALESCE(
+            (
+                SELECT MIN(cq2.minutos)
+                FROM configuracao_quartos cq2
+                WHERE cq2.ativo = true
+                AND minutos_decorridos <= (cq2.minutos + tolerancia)
+            ),
+            (
+                SELECT MAX(cq3.minutos)
+                FROM configuracao_quartos cq3
+                WHERE cq3.ativo = true
+            )
+        )
+    )
+    ORDER BY cq.minutos ASC
+    LIMIT 1;
+END;
+$$ LANGUAGE plpgsql;
+
+COMMENT ON FUNCTION calcular_valor_tempo_livre(INTEGER) IS
+'Calcula o valor do serviço de tempo livre baseado nos minutos decorridos.
+Aplica tolerância de 10 minutos para cada faixa de preço.
+Exemplo: 41 min cobra preço de 1 hora, 31 min cobra 1 hora, 30 min cobra 30 min.';
+
+-- View para serviços de tempo livre em andamento
+CREATE OR REPLACE VIEW vw_servicos_tempo_livre_andamento AS
+SELECT
+    ic.id as item_id,
+    ic.comanda_id,
+    c.numero as comanda_numero,
+    ic.numero_quarto,
+    ic.hora_entrada,
+    ic.status_tempo_livre,
+    EXTRACT(EPOCH FROM (get_brasilia_time() - ic.hora_entrada))/60 as minutos_decorridos,
+    (
+        SELECT json_agg(json_build_object(
+            'id', a.id,
+            'nome', a.nome,
+            'apelido', a.apelido
+        ))
+        FROM servico_quarto_acompanhantes sqa
+        JOIN acompanhantes a ON a.id = sqa.acompanhante_id
+        WHERE sqa.item_comanda_id = ic.id
+    ) as acompanhantes
+FROM itens_comanda ic
+JOIN comandas c ON c.id = ic.comanda_id
+WHERE ic.tipo_item = 'quarto'
+  AND ic.tempo_livre = true
+  AND ic.status_tempo_livre = 'em_andamento'
+  AND ic.cancelado = false
+  AND c.status = 'aberta'
+ORDER BY ic.hora_entrada ASC;
+
+-- ============================================
+-- Migration 009: Vincular ocupacao_quartos com itens_comanda
+-- ============================================
+
+DO $$
+BEGIN
+    -- Adicionar coluna item_comanda_id para vincular ocupação com item da comanda
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'ocupacao_quartos' AND column_name = 'item_comanda_id'
+    ) THEN
+        ALTER TABLE ocupacao_quartos ADD COLUMN item_comanda_id INTEGER REFERENCES itens_comanda(id);
+        COMMENT ON COLUMN ocupacao_quartos.item_comanda_id IS 'Referência ao item da comanda criado para esta ocupação';
+        RAISE NOTICE 'Campo item_comanda_id adicionado à tabela ocupacao_quartos';
+    END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_ocupacao_item_comanda ON ocupacao_quartos(item_comanda_id);
+
 COMMIT;
 
 -- Verificar as alterações

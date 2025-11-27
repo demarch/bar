@@ -40,6 +40,8 @@ export interface Comanda {
   acompanhantes?: string[];
 }
 
+export type StatusTempoLivre = 'em_andamento' | 'aguardando_confirmacao' | 'finalizado';
+
 export interface ItemComanda {
   id: number;
   comanda_id: number;
@@ -54,6 +56,16 @@ export interface ItemComanda {
   tipo_item: ItemTipo;
   cancelado: boolean;
   created_at: string;
+  // Campos para serviço de quarto
+  numero_quarto?: string;
+  hora_entrada?: string;
+  configuracao_quarto_id?: number;
+  // Campos para tempo livre
+  tempo_livre?: boolean;
+  hora_saida?: string;
+  valor_sugerido?: number;
+  status_tempo_livre?: StatusTempoLivre;
+  minutos_utilizados?: number;
 }
 
 export interface ComandaDetalhada extends Comanda {
@@ -171,6 +183,35 @@ export interface ConfiguracaoQuarto {
   descricao: string;
   valor: number;
   ativo: boolean;
+}
+
+export interface ServicoTempoLivreEmAndamento {
+  item_id: number;
+  comanda_id: number;
+  comanda_numero: number;
+  numero_quarto: string;
+  hora_entrada: string;
+  status_tempo_livre: StatusTempoLivre;
+  minutos_decorridos: number;
+  acompanhantes: Array<{
+    id: number;
+    nome: string;
+    apelido?: string;
+  }>;
+}
+
+export interface CalculoTempoLivre {
+  item_id: number;
+  minutos_decorridos: number;
+  hora_entrada: string;
+  hora_saida: string;
+  configuracao_sugerida: {
+    id: number;
+    descricao: string;
+    minutos: number;
+    valor: number;
+  };
+  valor_sugerido: number;
 }
 
 // ============================================
