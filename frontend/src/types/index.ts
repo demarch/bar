@@ -225,3 +225,142 @@ export interface ApiResponse<T = any> {
   error?: string;
   details?: string[];
 }
+
+// ============================================
+// NF-E TYPES
+// ============================================
+
+export type NfeAmbiente = 1 | 2; // 1=Produção, 2=Homologação
+export type NfeStatus = 'PENDENTE' | 'AUTORIZADA' | 'REJEITADA' | 'DENEGADA' | 'CANCELADA';
+export type NfeTipoCertificado = 'A1' | 'A3';
+
+export interface NfeConfiguracao {
+  id?: number;
+  razaoSocial: string;
+  nomeFantasia?: string;
+  cnpj: string;
+  inscricaoEstadual: string;
+  inscricaoMunicipal?: string;
+  cnaeFiscal?: string;
+  codigoRegimeTributario: number;
+
+  // Endereço
+  logradouro: string;
+  numero: string;
+  complemento?: string;
+  bairro: string;
+  codigoMunicipio: string;
+  nomeMunicipio: string;
+  uf: string;
+  cep: string;
+  telefone?: string;
+
+  // Configurações NF-e
+  serieNfe: number;
+  proximoNumeroNfe: number;
+  ambiente: NfeAmbiente;
+  tipoImpressaoDanfe: number;
+  formaEmissao: number;
+
+  // Certificado
+  certificadoValidade?: string;
+  certificadoTipo: NfeTipoCertificado;
+
+  ativo?: boolean;
+}
+
+export interface NfeItem {
+  numeroItem: number;
+  codigoProduto: string;
+  descricao: string;
+  ncm: string;
+  cfop: string;
+  unidade: string;
+  quantidade: number;
+  valorUnitario: number;
+  valorTotal: number;
+}
+
+export interface Nfe {
+  id: number;
+  chaveAcesso: string;
+  numero: number;
+  serie: number;
+  comandaId?: number;
+  naturezaOperacao: string;
+  status: NfeStatus;
+  codigoStatus?: number;
+  motivoStatus?: string;
+  protocoloAutorizacao?: string;
+  dataAutorizacao?: string;
+  dataEmissao: string;
+  valorTotalNf: number;
+  valorTotalProdutos: number;
+  ambiente: NfeAmbiente;
+  itens?: NfeItem[];
+  destinatario?: {
+    cnpjCpf?: string;
+    razaoSocial?: string;
+  };
+  danfeImpresso?: boolean;
+}
+
+export interface NfeEmitirResponse {
+  success: boolean;
+  nfeId: number;
+  chaveAcesso: string;
+  numero: number;
+  serie: number;
+  protocolo?: string;
+  status: NfeStatus;
+  mensagem: string;
+}
+
+export interface NfeStatusServico {
+  online: boolean;
+  ambiente: NfeAmbiente;
+  codigoStatus: number;
+  motivoStatus: string;
+  tempoMedio: number;
+  dataConsulta: string;
+}
+
+export interface NfeContingenciaStatus {
+  ativo: boolean;
+  formaEmissao: number;
+  dataEntrada?: string;
+  motivo?: string;
+  nfesPendentes: number;
+}
+
+export interface CertificadoInfo {
+  tipo: NfeTipoCertificado;
+  titular: string;
+  cnpj: string;
+  serialNumber: string;
+  validadeInicio: string;
+  validadeFim: string;
+  emissor: string;
+  valido: boolean;
+  diasParaExpirar: number;
+}
+
+export interface NfeHomologacaoProgresso {
+  autorizacoes: {
+    realizadas: number;
+    meta: number;
+    percentual: number;
+  };
+  cancelamentos: {
+    realizadas: number;
+    meta: number;
+    percentual: number;
+  };
+  inutilizacoes: {
+    realizadas: number;
+    meta: number;
+    percentual: number;
+  };
+  status: string;
+  dataTeste?: string;
+}

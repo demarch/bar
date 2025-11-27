@@ -12,6 +12,7 @@ import { Quartos } from './pages/Quartos';
 import { Admin } from './pages/Admin';
 import { Relatorios } from './pages/Relatorios';
 import DashboardAcompanhantes from './pages/DashboardAcompanhantes';
+import { NfeDashboard, NfeConfig, NfeLista, NfeInutilizacao } from './pages/nfe';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -115,6 +116,38 @@ function App() {
             element={
               <ProtectedRoute>
                 <DashboardAcompanhantes />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/nfe"
+            element={
+              <ProtectedRoute>
+                <NfeDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/nfe/config"
+            element={
+              <ProtectedRoute>
+                <NfeConfig />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/nfe/lista"
+            element={
+              <ProtectedRoute>
+                <NfeLista />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/nfe/inutilizacao"
+            element={
+              <ProtectedRoute>
+                <NfeInutilizacao />
               </ProtectedRoute>
             }
           />

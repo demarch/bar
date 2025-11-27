@@ -36,6 +36,7 @@ import relatorioRoutes from './routes/relatorios';
 import migrationRoutes from './routes/migrationRoutes';
 import dashboardRoutes from './routes/dashboard';
 import healthRoutes from './routes/health';
+import { nfeRoutes, inicializarNfe } from './nfe';
 
 // Initialize Express
 const app = express();
@@ -100,6 +101,7 @@ app.use('/api/admin/dashboard', dashboardRoutes);
 app.use('/api/usuarios', usuarioRoutes);
 app.use('/api/relatorios', relatorioRoutes);
 app.use('/api/migrations', migrationRoutes);
+app.use('/api/nfe', nfeRoutes);
 
 // Error handler (deve ser o último middleware)
 app.use(errorHandler);
@@ -194,6 +196,18 @@ const startServer = async () => {
 
     // Connect to Redis
     await connectRedis();
+
+    // Inicializa módulo NF-e (certificado, contingência, etc)
+    try {
+      const nfeIniciado = await inicializarNfe();
+      if (nfeIniciado) {
+        logger.info('✅ Módulo NF-e inicializado com sucesso');
+      } else {
+        logger.warn('⚠️ Módulo NF-e não inicializado (verifique configuração)');
+      }
+    } catch (nfeError) {
+      logger.warn('⚠️ Erro ao inicializar módulo NF-e:', nfeError);
+    }
 
     // Start server
     server.listen(PORT, () => {
