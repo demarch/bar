@@ -355,6 +355,43 @@ export const adicionarServicoQuarto = asyncHandler(async (req: AuthRequest, res:
     throw new AppError('Quarto não encontrado ou inativo', 404);
   }
 
+  // Verificar se o quarto já está ocupado (em ocupacao_quartos OU itens_comanda tempo_livre)
+  const quartoOcupadoResult = await pool.query(
+    `SELECT 1 FROM ocupacao_quartos WHERE numero_quarto = $1 AND status = 'ocupado'
+     UNION
+     SELECT 1 FROM itens_comanda WHERE numero_quarto = $1 AND tipo_item = 'quarto'
+       AND tempo_livre = true AND status_tempo_livre = 'em_andamento' AND cancelado = false`,
+    [numero_quarto]
+  );
+
+  if (quartoOcupadoResult.rows.length > 0) {
+    throw new AppError(`O quarto ${numero_quarto} já está ocupado`, 400);
+  }
+
+  // Verificar se alguma acompanhante já está em outro quarto
+  const acompanhanteOcupadaResult = await pool.query(
+    `SELECT a.nome FROM acompanhantes a
+     WHERE a.id = ANY($1)
+     AND (
+       EXISTS (SELECT 1 FROM ocupacao_quartos oq WHERE oq.acompanhante_id = a.id AND oq.status = 'ocupado')
+       OR EXISTS (
+         SELECT 1 FROM servico_quarto_acompanhantes sqa
+         JOIN itens_comanda ic ON ic.id = sqa.item_comanda_id
+         WHERE sqa.acompanhante_id = a.id
+           AND ic.tipo_item = 'quarto'
+           AND ic.tempo_livre = true
+           AND ic.status_tempo_livre = 'em_andamento'
+           AND ic.cancelado = false
+       )
+     )`,
+    [acompanhante_ids]
+  );
+
+  if (acompanhanteOcupadaResult.rows.length > 0) {
+    const nomes = acompanhanteOcupadaResult.rows.map(r => r.nome).join(', ');
+    throw new AppError(`Acompanhante(s) já em outro quarto: ${nomes}`, 400);
+  }
+
   // Buscar configuração de preço
   const configResult = await pool.query(
     'SELECT * FROM configuracao_quartos WHERE id = $1 AND ativo = true',
@@ -483,6 +520,43 @@ export const adicionarServicoTempoLivre = asyncHandler(async (req: AuthRequest, 
     throw new AppError('Quarto não encontrado ou inativo', 404);
   }
 
+  // Verificar se o quarto já está ocupado (em ocupacao_quartos OU itens_comanda tempo_livre)
+  const quartoOcupadoResult = await pool.query(
+    `SELECT 1 FROM ocupacao_quartos WHERE numero_quarto = $1 AND status = 'ocupado'
+     UNION
+     SELECT 1 FROM itens_comanda WHERE numero_quarto = $1 AND tipo_item = 'quarto'
+       AND tempo_livre = true AND status_tempo_livre = 'em_andamento' AND cancelado = false`,
+    [numero_quarto]
+  );
+
+  if (quartoOcupadoResult.rows.length > 0) {
+    throw new AppError(`O quarto ${numero_quarto} já está ocupado`, 400);
+  }
+
+  // Verificar se alguma acompanhante já está em outro quarto
+  const acompanhanteOcupadaResult = await pool.query(
+    `SELECT a.nome FROM acompanhantes a
+     WHERE a.id = ANY($1)
+     AND (
+       EXISTS (SELECT 1 FROM ocupacao_quartos oq WHERE oq.acompanhante_id = a.id AND oq.status = 'ocupado')
+       OR EXISTS (
+         SELECT 1 FROM servico_quarto_acompanhantes sqa
+         JOIN itens_comanda ic ON ic.id = sqa.item_comanda_id
+         WHERE sqa.acompanhante_id = a.id
+           AND ic.tipo_item = 'quarto'
+           AND ic.tempo_livre = true
+           AND ic.status_tempo_livre = 'em_andamento'
+           AND ic.cancelado = false
+       )
+     )`,
+    [acompanhante_ids]
+  );
+
+  if (acompanhanteOcupadaResult.rows.length > 0) {
+    const nomes = acompanhanteOcupadaResult.rows.map(r => r.nome).join(', ');
+    throw new AppError(`Acompanhante(s) já em outro quarto: ${nomes}`, 400);
+  }
+
   // Verificar se todas as acompanhantes existem e estão ativas
   const acompanhantesResult = await pool.query(
     'SELECT id, nome FROM acompanhantes WHERE id = ANY($1) AND ativa = true',
@@ -524,6 +598,14 @@ export const adicionarServicoTempoLivre = asyncHandler(async (req: AuthRequest, 
         [item.id, acompanhante_id]
       );
     }
+
+    // Inserir em ocupacao_quartos para aparecer no /quartos
+    // Usar a primeira acompanhante como principal (para compatibilidade)
+    await client.query(
+      `INSERT INTO ocupacao_quartos (comanda_id, acompanhante_id, numero_quarto, status, item_comanda_id)
+       VALUES ($1, $2, $3, 'ocupado', $4)`,
+      [comanda_id, acompanhante_ids[0], numero_quarto, item.id]
+    );
 
     await client.query('COMMIT');
 
@@ -703,6 +785,17 @@ export const confirmarServicoTempoLivre = asyncHandler(async (req: AuthRequest, 
          configuracao_quarto_id = $3,
          status_tempo_livre = 'finalizado'
      WHERE id = $1`,
+    [id, valor_final, configuracao_quarto_id || null]
+  );
+
+  // Atualizar ocupacao_quartos correspondente
+  await pool.query(
+    `UPDATE ocupacao_quartos
+     SET status = 'finalizado',
+         hora_fim = CURRENT_TIMESTAMP,
+         valor_cobrado = $2,
+         configuracao_quarto_id = $3
+     WHERE item_comanda_id = $1`,
     [id, valor_final, configuracao_quarto_id || null]
   );
 

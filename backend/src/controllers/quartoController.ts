@@ -100,14 +100,37 @@ export const ocuparQuarto = asyncHandler(async (req: AuthRequest, res: Response)
     throw new AppError('Acompanhante não encontrada', 404);
   }
 
-  // Verificar se o quarto já está ocupado
-  const quartoOcupado = await pool.query(
-    'SELECT id FROM ocupacao_quartos WHERE numero_quarto = $1 AND status = $2',
-    [numero_quarto, 'ocupado']
+  const acompanhante = acompanhanteResult.rows[0];
+
+  // Verificar se o quarto já está ocupado (em ocupacao_quartos OU itens_comanda tempo_livre)
+  const quartoOcupadoResult = await pool.query(
+    `SELECT 1 FROM ocupacao_quartos WHERE numero_quarto = $1 AND status = 'ocupado'
+     UNION
+     SELECT 1 FROM itens_comanda WHERE numero_quarto = $1 AND tipo_item = 'quarto'
+       AND tempo_livre = true AND status_tempo_livre = 'em_andamento' AND cancelado = false`,
+    [numero_quarto]
   );
 
-  if (quartoOcupado.rows.length > 0) {
-    throw new AppError('Este quarto já está ocupado', 400);
+  if (quartoOcupadoResult.rows.length > 0) {
+    throw new AppError(`O quarto ${numero_quarto} já está ocupado`, 400);
+  }
+
+  // Verificar se a acompanhante já está em outro quarto
+  const acompanhanteOcupadaResult = await pool.query(
+    `SELECT 1 FROM ocupacao_quartos WHERE acompanhante_id = $1 AND status = 'ocupado'
+     UNION
+     SELECT 1 FROM servico_quarto_acompanhantes sqa
+     JOIN itens_comanda ic ON ic.id = sqa.item_comanda_id
+     WHERE sqa.acompanhante_id = $1
+       AND ic.tipo_item = 'quarto'
+       AND ic.tempo_livre = true
+       AND ic.status_tempo_livre = 'em_andamento'
+       AND ic.cancelado = false`,
+    [acompanhante_id]
+  );
+
+  if (acompanhanteOcupadaResult.rows.length > 0) {
+    throw new AppError(`A acompanhante ${acompanhante.nome} já está em outro quarto`, 400);
   }
 
   // Iniciar transação
