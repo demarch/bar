@@ -694,6 +694,25 @@ WHERE ic.tipo_item = 'quarto'
   AND c.status = 'aberta'
 ORDER BY ic.hora_entrada ASC;
 
+-- ============================================
+-- Migration 009: Vincular ocupacao_quartos com itens_comanda
+-- ============================================
+
+DO $$
+BEGIN
+    -- Adicionar coluna item_comanda_id para vincular ocupação com item da comanda
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'ocupacao_quartos' AND column_name = 'item_comanda_id'
+    ) THEN
+        ALTER TABLE ocupacao_quartos ADD COLUMN item_comanda_id INTEGER REFERENCES itens_comanda(id);
+        COMMENT ON COLUMN ocupacao_quartos.item_comanda_id IS 'Referência ao item da comanda criado para esta ocupação';
+        RAISE NOTICE 'Campo item_comanda_id adicionado à tabela ocupacao_quartos';
+    END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_ocupacao_item_comanda ON ocupacao_quartos(item_comanda_id);
+
 COMMIT;
 
 -- Verificar as alterações

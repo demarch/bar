@@ -78,6 +78,7 @@ export const listarQuartosOcupados = asyncHandler(async (_req: AuthRequest, res:
 // Ocupar quarto
 export const ocuparQuarto = asyncHandler(async (req: AuthRequest, res: Response) => {
   const { comanda_id, acompanhante_id, numero_quarto } = req.body;
+  const usuario_id = req.user!.id;
 
   // Verificar se a comanda existe e está aberta
   const comandaResult = await pool.query(
@@ -109,21 +110,62 @@ export const ocuparQuarto = asyncHandler(async (req: AuthRequest, res: Response)
     throw new AppError('Este quarto já está ocupado', 400);
   }
 
-  // Registrar ocupação
-  const result = await pool.query(
-    `INSERT INTO ocupacao_quartos (comanda_id, acompanhante_id, numero_quarto, status)
-     VALUES ($1, $2, $3, 'ocupado')
-     RETURNING *`,
-    [comanda_id, acompanhante_id, numero_quarto]
-  );
+  // Iniciar transação
+  const client = await pool.connect();
 
-  const response: ApiResponse = {
-    success: true,
-    data: result.rows[0],
-    message: 'Quarto ocupado com sucesso',
-  };
+  try {
+    await client.query('BEGIN');
 
-  res.status(201).json(response);
+    // Obter horário de Brasília
+    const horaBrasiliaResult = await client.query('SELECT get_brasilia_time() as hora');
+    const hora_entrada = horaBrasiliaResult.rows[0].hora;
+
+    // Inserir item na comanda com tempo_livre = true (valor inicial R$ 0)
+    const itemResult = await client.query(
+      `INSERT INTO itens_comanda
+       (comanda_id, produto_id, quantidade, valor_unitario, valor_total, valor_comissao,
+        tipo_item, numero_quarto, hora_entrada, tempo_livre, status_tempo_livre, usuario_id)
+       VALUES ($1, NULL, 1, 0, 0, 0, 'quarto', $2, $3, true, 'em_andamento', $4)
+       RETURNING *`,
+      [comanda_id, numero_quarto, hora_entrada, usuario_id]
+    );
+
+    const item = itemResult.rows[0];
+
+    // Inserir relacionamento com a acompanhante
+    await client.query(
+      `INSERT INTO servico_quarto_acompanhantes
+       (item_comanda_id, acompanhante_id)
+       VALUES ($1, $2)`,
+      [item.id, acompanhante_id]
+    );
+
+    // Registrar ocupação com referência ao item da comanda
+    const ocupacaoResult = await client.query(
+      `INSERT INTO ocupacao_quartos (comanda_id, acompanhante_id, numero_quarto, status, item_comanda_id)
+       VALUES ($1, $2, $3, 'ocupado', $4)
+       RETURNING *`,
+      [comanda_id, acompanhante_id, numero_quarto, item.id]
+    );
+
+    await client.query('COMMIT');
+
+    const response: ApiResponse = {
+      success: true,
+      data: {
+        ...ocupacaoResult.rows[0],
+        item_comanda: item,
+      },
+      message: 'Quarto ocupado com sucesso',
+    };
+
+    res.status(201).json(response);
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 });
 
 // Finalizar ocupação de quarto
@@ -150,13 +192,14 @@ export const finalizarOcupacao = asyncHandler(async (req: AuthRequest, res: Resp
 
   const minutos_decorridos = Math.ceil(parseFloat(tempoResult.rows[0].minutos));
 
-  // Buscar configuração de preço adequada
+  // Buscar configuração de preço adequada (com tolerância de 10 minutos)
+  const tolerancia = 10;
   const configResult = await pool.query(
     `SELECT * FROM configuracao_quartos
-     WHERE minutos >= $1 AND ativo = true
+     WHERE minutos + $2 >= $1 AND ativo = true
      ORDER BY minutos ASC
      LIMIT 1`,
-    [minutos_decorridos]
+    [minutos_decorridos, tolerancia]
   );
 
   let configuracao_quarto_id = null;
@@ -166,7 +209,7 @@ export const finalizarOcupacao = asyncHandler(async (req: AuthRequest, res: Resp
     configuracao_quarto_id = configResult.rows[0].id;
     valor_cobrado = parseFloat(configResult.rows[0].valor);
   } else {
-    // Se ultrapassou o tempo máximo, usar a configuração mais cara
+    // Se ultrapassou o tempo máximo + tolerância, usar a configuração mais cara
     const maxConfigResult = await pool.query(
       `SELECT * FROM configuracao_quartos
        WHERE ativo = true
@@ -179,6 +222,10 @@ export const finalizarOcupacao = asyncHandler(async (req: AuthRequest, res: Resp
       valor_cobrado = parseFloat(maxConfigResult.rows[0].valor);
     }
   }
+
+  // Obter horário de Brasília para hora_saida
+  const horaBrasiliaResult = await pool.query('SELECT get_brasilia_time() as hora');
+  const hora_saida = horaBrasiliaResult.rows[0].hora;
 
   // Finalizar ocupação
   const finalizacaoResult = await pool.query(
@@ -193,8 +240,22 @@ export const finalizarOcupacao = asyncHandler(async (req: AuthRequest, res: Resp
     [minutos_decorridos, valor_cobrado, configuracao_quarto_id, id]
   );
 
-  // Lançar valor na comanda como item
-  if (valor_cobrado > 0) {
+  // Atualizar ou inserir item na comanda
+  if (ocupacao.item_comanda_id) {
+    // Se já existe item vinculado, apenas atualiza
+    await pool.query(
+      `UPDATE itens_comanda
+       SET valor_unitario = $1,
+           valor_total = $1,
+           hora_saida = $2,
+           minutos_utilizados = $3,
+           status_tempo_livre = 'finalizado',
+           configuracao_quarto_id = $4
+       WHERE id = $5`,
+      [valor_cobrado, hora_saida, minutos_decorridos, configuracao_quarto_id, ocupacao.item_comanda_id]
+    );
+  } else if (valor_cobrado > 0) {
+    // Retrocompatibilidade: se não tem item vinculado, insere novo
     await pool.query(
       `INSERT INTO itens_comanda
        (comanda_id, produto_id, acompanhante_id, quantidade, valor_unitario, valor_total, tipo_item, usuario_id)
@@ -217,16 +278,35 @@ export const cancelarOcupacao = asyncHandler(async (req: AuthRequest, res: Respo
   const { id } = req.params;
   const { observacoes } = req.body;
 
+  // Buscar ocupação para verificar se tem item vinculado
+  const ocupacaoResult = await pool.query(
+    'SELECT * FROM ocupacao_quartos WHERE id = $1 AND status = $2',
+    [id, 'ocupado']
+  );
+
+  if (ocupacaoResult.rows.length === 0) {
+    throw new AppError('Ocupação não encontrada ou já foi finalizada', 404);
+  }
+
+  const ocupacao = ocupacaoResult.rows[0];
+
+  // Cancelar ocupação
   const result = await pool.query(
     `UPDATE ocupacao_quartos
      SET status = 'cancelado', observacoes = $2
-     WHERE id = $1 AND status = 'ocupado'
+     WHERE id = $1
      RETURNING *`,
     [id, observacoes]
   );
 
-  if (result.rows.length === 0) {
-    throw new AppError('Ocupação não encontrada ou já foi finalizada', 404);
+  // Se tem item vinculado, cancelar também
+  if (ocupacao.item_comanda_id) {
+    await pool.query(
+      `UPDATE itens_comanda
+       SET cancelado = true, status_tempo_livre = NULL
+       WHERE id = $1`,
+      [ocupacao.item_comanda_id]
+    );
   }
 
   const response: ApiResponse = {
