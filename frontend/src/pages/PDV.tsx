@@ -6,6 +6,7 @@ import { useAcompanhantesAtivas } from '../hooks/useAcompanhantes';
 import { useCaixa } from '../hooks/useCaixa';
 import { ComandaDetalhada, Produto } from '../types';
 import { ServicoQuartoModal } from '../components/pdv/ServicoQuartoModal';
+import { ServicosTempoLivreList } from '../components/pdv/ServicosTempoLivreList';
 
 export const PDV: React.FC = () => {
   const { comandas, buscarComanda, criarComanda, adicionarItem } = useComandas();
@@ -146,6 +147,21 @@ export const PDV: React.FC = () => {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Servicos de Tempo Livre em Andamento */}
+          <div className="mt-6">
+            <ServicosTempoLivreList
+              onFinalizarSuccess={async () => {
+                setMensagem('Servico de tempo livre finalizado com sucesso!');
+                if (comandaSelecionada) {
+                  const comandaAtualizada = await buscarComanda(comandaSelecionada.numero);
+                  if (comandaAtualizada) {
+                    setComandaSelecionada(comandaAtualizada);
+                  }
+                }
+              }}
+            />
           </div>
 
           {/* Comandas Abertas */}
