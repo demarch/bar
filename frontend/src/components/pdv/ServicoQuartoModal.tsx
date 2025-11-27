@@ -139,11 +139,6 @@ export const ServicoQuartoModal: React.FC<ServicoQuartoModalProps> = ({
           )}
 
           <div className="space-y-6">
-            {/* TESTE - REMOVER DEPOIS */}
-            <div className="bg-red-500 text-white p-4 text-xl font-bold text-center">
-              TESTE: Se voce ve isso, o build esta funcionando!
-            </div>
-
             {/* Tipo de Servico - DESTAQUE */}
             <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-4">
               <label className="block text-sm font-bold text-yellow-800 mb-3">
