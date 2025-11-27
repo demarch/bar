@@ -14,24 +14,28 @@ export const ServicosTempoLivreList: React.FC<ServicosTempoLivreListProps> = ({
   const [selectedServico, setSelectedServico] = useState<ServicoTempoLivreEmAndamento | null>(null);
   const [showFinalizarModal, setShowFinalizarModal] = useState(false);
 
+  // Timestamp de quando os dados foram buscados
+  const [dataFetchedAt, setDataFetchedAt] = useState<number>(Date.now());
+
   // Query para buscar servicos em andamento
   const { data: servicos, refetch } = useQuery({
     queryKey: ['servicos-tempo-livre'],
     queryFn: async () => {
       const response = await api.get('/comandas/tempo-livre');
+      setDataFetchedAt(Date.now());
       return response.data.data as ServicoTempoLivreEmAndamento[];
     },
     refetchInterval: 30000, // Atualiza a cada 30 segundos
   });
 
-  // Atualiza o tempo decorrido a cada segundo
-  const [, setTick] = useState(0);
+  // Segundos decorridos desde a última busca (para atualização em tempo real)
+  const [secondsSinceFetch, setSecondsSinceFetch] = useState(0);
   useEffect(() => {
     const interval = setInterval(() => {
-      setTick((t) => t + 1);
+      setSecondsSinceFetch(Math.floor((Date.now() - dataFetchedAt) / 1000));
     }, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [dataFetchedAt]);
 
   const formatarTempo = (minutos: number): string => {
     const horas = Math.floor(minutos / 60);
@@ -43,16 +47,25 @@ export const ServicosTempoLivreList: React.FC<ServicosTempoLivreListProps> = ({
   };
 
   const formatarHorario = (data: string): string => {
+    // O horário vem do banco já em horário de Brasília (sem timezone)
+    // Precisamos extrair diretamente sem conversão de timezone
+    const match = data.match(/(\d{2}):(\d{2})/);
+    if (match) {
+      return `${match[1]}:${match[2]}`;
+    }
+    // Fallback: tentar parse normal
     return new Date(data).toLocaleTimeString('pt-BR', {
       hour: '2-digit',
       minute: '2-digit',
     });
   };
 
-  const calcularTempoDecorrido = (horaEntrada: string): number => {
-    const entrada = new Date(horaEntrada);
-    const agora = new Date();
-    return Math.ceil((agora.getTime() - entrada.getTime()) / 60000);
+  const calcularTempoDecorrido = (servico: ServicoTempoLivreEmAndamento): number => {
+    // Usar minutos_decorridos do backend como base (já calculado corretamente com timezone)
+    // e adicionar o tempo desde a última atualização dos dados
+    const minutosBase = servico.minutos_decorridos || 0;
+    const minutosAdicionais = secondsSinceFetch / 60;
+    return Math.ceil(minutosBase + minutosAdicionais);
   };
 
   const handleFinalizar = (servico: ServicoTempoLivreEmAndamento) => {
@@ -86,7 +99,7 @@ export const ServicosTempoLivreList: React.FC<ServicosTempoLivreListProps> = ({
 
         <div className="space-y-3">
           {servicos.map((servico) => {
-            const tempoDecorrido = calcularTempoDecorrido(servico.hora_entrada);
+            const tempoDecorrido = calcularTempoDecorrido(servico);
             const tempoAlerta = tempoDecorrido > 60; // Alerta se passou de 1 hora
 
             return (

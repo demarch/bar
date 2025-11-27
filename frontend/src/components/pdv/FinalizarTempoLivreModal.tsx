@@ -121,14 +121,40 @@ export const FinalizarTempoLivreModal: React.FC<FinalizarTempoLivreModalProps> =
   };
 
   const formatarHorario = (data: string): string => {
+    // O horário vem do banco já em horário de Brasília (sem timezone)
+    // Precisamos extrair diretamente sem conversão de timezone
+    const match = data.match(/(\d{2}):(\d{2})/);
+    if (match) {
+      return `${match[1]}:${match[2]}`;
+    }
+    // Fallback
     return new Date(data).toLocaleTimeString('pt-BR', {
       hour: '2-digit',
       minute: '2-digit',
     });
   };
 
-  // Calcular tempo decorrido em tempo real
+  // Calcular tempo decorrido em tempo real (aproximado, o valor exato vem do backend)
   const calcularTempoDecorrido = (): number => {
+    // Extrair hora e minuto da string de entrada (sem conversão de timezone)
+    const match = horaEntrada.match(/T(\d{2}):(\d{2})/);
+    if (match) {
+      const horaEntradaNum = parseInt(match[1]);
+      const minEntradaNum = parseInt(match[2]);
+      const agora = new Date();
+      // Usar horário de Brasília (UTC-3) para comparação
+      const agoraBrasilia = new Date(agora.getTime() - (agora.getTimezoneOffset() * 60000));
+      const horaAgora = agoraBrasilia.getUTCHours();
+      const minAgora = agoraBrasilia.getUTCMinutes();
+
+      let minDecorridos = (horaAgora * 60 + minAgora) - (horaEntradaNum * 60 + minEntradaNum);
+      // Se for negativo, provavelmente passou da meia-noite
+      if (minDecorridos < 0) {
+        minDecorridos += 24 * 60;
+      }
+      return minDecorridos;
+    }
+    // Fallback para o método antigo
     const entrada = new Date(horaEntrada);
     const agora = new Date();
     return Math.ceil((agora.getTime() - entrada.getTime()) / 60000);
