@@ -1,4 +1,4 @@
--- Migration 009: Sistema NF-e (Nota Fiscal Eletrônica)
+-- Migration 010: Sistema NF-e (Nota Fiscal Eletrônica)
 -- Baseado no Manual de Credenciamento SEFA/PR versão 3.1
 
 -- =====================================================
@@ -592,5 +592,5 @@ COMMENT ON TABLE nfe_homologacao_testes IS 'Controle de testes para credenciamen
 
 -- Inserir registro de migração
 INSERT INTO logs_operacoes (operacao, detalhes, usuario_id)
-VALUES ('MIGRATION', 'Migration 009: Sistema NF-e implementado', NULL)
+VALUES ('MIGRATION', 'Migration 010: Sistema NF-e implementado', NULL)
 ON CONFLICT DO NOTHING;
