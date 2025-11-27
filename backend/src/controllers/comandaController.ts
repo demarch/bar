@@ -356,8 +356,9 @@ export const adicionarServicoQuarto = asyncHandler(async (req: AuthRequest, res:
   }
 
   // Verificar se o quarto já está ocupado (em ocupacao_quartos OU itens_comanda tempo_livre)
+  // Nota: ocupacao_quartos.numero_quarto é INTEGER, itens_comanda.numero_quarto é VARCHAR
   const quartoOcupadoResult = await pool.query(
-    `SELECT 1 FROM ocupacao_quartos WHERE numero_quarto = $1 AND status = 'ocupado'
+    `SELECT 1 FROM ocupacao_quartos WHERE numero_quarto = $1::integer AND status = 'ocupado'
      UNION
      SELECT 1 FROM itens_comanda WHERE numero_quarto = $1 AND tipo_item = 'quarto'
        AND tempo_livre = true AND status_tempo_livre = 'em_andamento' AND cancelado = false`,
@@ -521,8 +522,9 @@ export const adicionarServicoTempoLivre = asyncHandler(async (req: AuthRequest, 
   }
 
   // Verificar se o quarto já está ocupado (em ocupacao_quartos OU itens_comanda tempo_livre)
+  // Nota: ocupacao_quartos.numero_quarto é INTEGER, itens_comanda.numero_quarto é VARCHAR
   const quartoOcupadoResult = await pool.query(
-    `SELECT 1 FROM ocupacao_quartos WHERE numero_quarto = $1 AND status = 'ocupado'
+    `SELECT 1 FROM ocupacao_quartos WHERE numero_quarto = $1::integer AND status = 'ocupado'
      UNION
      SELECT 1 FROM itens_comanda WHERE numero_quarto = $1 AND tipo_item = 'quarto'
        AND tempo_livre = true AND status_tempo_livre = 'em_andamento' AND cancelado = false`,
