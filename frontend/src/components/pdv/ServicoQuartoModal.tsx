@@ -139,31 +139,32 @@ export const ServicoQuartoModal: React.FC<ServicoQuartoModalProps> = ({
           )}
 
           <div className="space-y-6">
-            {/* Tipo de Servico */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Tipo de Servico *
+            {/* Tipo de Servico - DESTAQUE */}
+            <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-4">
+              <label className="block text-sm font-bold text-yellow-800 mb-3">
+                Escolha o Tipo de Servico *
               </label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-4">
                 <button
                   type="button"
                   onClick={() => {
                     setTipoServico('fixo');
                     setConfiguracaoId(undefined);
                   }}
-                  className={`p-4 rounded-lg border-2 transition-all text-left ${
+                  className={`p-5 rounded-lg border-3 transition-all text-left ${
                     tipoServico === 'fixo'
-                      ? 'border-primary-500 bg-primary-50'
-                      : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-primary-500 bg-primary-100 shadow-lg ring-2 ring-primary-300'
+                      : 'border-gray-300 bg-white hover:border-primary-300 hover:bg-primary-50'
                   }`}
                 >
-                  <div className="flex items-center gap-2">
-                    <svg className="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="flex items-center gap-2 mb-2">
+                    <svg className={`w-6 h-6 ${tipoServico === 'fixo' ? 'text-primary-600' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    <span className="font-bold text-primary-600">Tempo Fixo</span>
+                    <span className={`font-bold text-lg ${tipoServico === 'fixo' ? 'text-primary-700' : 'text-gray-700'}`}>Tempo Fixo</span>
                   </div>
-                  <p className="text-xs text-gray-600 mt-1">Selecione um tempo pre-definido (30min, 1h, etc)</p>
+                  <p className="text-sm text-gray-600">Selecione um tempo pre-definido</p>
+                  <p className="text-xs text-gray-500 mt-1">(30min, 1h, 1h30, 2h)</p>
                 </button>
                 <button
                   type="button"
@@ -171,20 +172,21 @@ export const ServicoQuartoModal: React.FC<ServicoQuartoModalProps> = ({
                     setTipoServico('tempo_livre');
                     setConfiguracaoId(undefined);
                   }}
-                  className={`p-4 rounded-lg border-2 transition-all text-left ${
+                  className={`p-5 rounded-lg border-3 transition-all text-left ${
                     tipoServico === 'tempo_livre'
-                      ? 'border-green-500 bg-green-50'
-                      : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-green-500 bg-green-100 shadow-lg ring-2 ring-green-300'
+                      : 'border-gray-300 bg-white hover:border-green-300 hover:bg-green-50'
                   }`}
                 >
-                  <div className="flex items-center gap-2">
-                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="flex items-center gap-2 mb-2">
+                    <svg className={`w-6 h-6 ${tipoServico === 'tempo_livre' ? 'text-green-600' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    <span className="font-bold text-green-600">Tempo Livre</span>
+                    <span className={`font-bold text-lg ${tipoServico === 'tempo_livre' ? 'text-green-700' : 'text-gray-700'}`}>Tempo Livre</span>
                   </div>
-                  <p className="text-xs text-gray-600 mt-1">Valor calculado ao finalizar o servico</p>
+                  <p className="text-sm text-gray-600">Sem tempo definido</p>
+                  <p className="text-xs text-gray-500 mt-1">(valor calculado na saida)</p>
                 </button>
               </div>
             </div>
